@@ -6,6 +6,7 @@ import type { InventoryCategory, InventoryUnit, ProductCategory, UserRole } from
 export const ROLES: Record<UserRole, string> = {
   admin: 'Admin',
   staff: 'Staff',
+  receiver: 'Receiver',
 }
 
 // ============================================================
@@ -178,6 +179,7 @@ export const CHART_COLORS = {
 // ============================================================
 export const LS_KEYS = {
   currentShiftId: 'coffee_inv_shift_id',
+  receiverShiftId: 'coffee_inv_receiver_shift_id',
   theme: 'coffee_inv_theme',
 }
 
@@ -198,4 +200,7 @@ export const ROUTE_NAMES = {
   STAFF_CHECKLIST: 'staff-checklist',
   STAFF_MY_SHIFT: 'staff-my-shift',
   STAFF_HISTORY: 'staff-history',
+  RECEIVER_QUEUE: 'receiver-queue',
+  RECEIVER_POS: 'receiver-pos',
+  RECEIVER_MY_SHIFT: 'receiver-my-shift',
 } as const

@@ -11,8 +11,9 @@ import { Minus, Plus, Trash2, ShoppingCart } from 'lucide-vue-next'
 
 interface Props {
   open: boolean
+  shiftIdOverride?: string | null
 }
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<{ close: []; sold: [saleId: string] }>()
 
 const posStore = usePosStore()
@@ -30,7 +31,7 @@ async function handleConfirm() {
   if (!canConfirm.value) return
   confirming.value = true
   try {
-    const saleId = await posStore.confirmSale()
+    const saleId = await posStore.confirmSale(props.shiftIdOverride)
     toast.success('Sale recorded!', `Total: ${formatCurrency(posStore.cartTotal)}`)
     emit('sold', saleId)
     emit('close')

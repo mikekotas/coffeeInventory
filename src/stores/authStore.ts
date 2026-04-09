@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => profile.value !== null)
   const isAdmin = computed(() => profile.value?.role === 'admin')
   const isStaff = computed(() => profile.value?.role === 'staff')
+  const isReceiver = computed(() => profile.value?.role === 'receiver')
   const role = computed<UserRole | null>(() => profile.value?.role ?? null)
 
   async function fetchProfile(userId: string) {
@@ -127,6 +128,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isAdmin,
     isStaff,
+    isReceiver,
     role,
     initialize,
     login,

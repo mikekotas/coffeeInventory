@@ -69,7 +69,7 @@ export const usePosStore = defineStore('pos', () => {
     paymentMethod.value = 'cash'
   }
 
-  async function confirmSale(): Promise<string> {
+  async function confirmSale(shiftIdOverride?: string | null): Promise<string> {
     if (cart.value.length === 0) throw new Error('Cart is empty')
 
     const authStore = useAuthStore()
@@ -82,12 +82,15 @@ export const usePosStore = defineStore('pos', () => {
 
     try {
       const totalAmount = cart.value.reduce((sum, item) => sum + item.product.base_price * item.qty, 0)
+      const resolvedShiftId = shiftIdOverride !== undefined
+        ? shiftIdOverride
+        : (shiftsStore.currentShift?.id ?? null)
 
       const { data: sale, error: saleErr } = await supabase
         .from('sales')
         .insert({
           staff_id: authStore.profile.id,
-          shift_id: shiftsStore.currentShift?.id ?? null,
+          shift_id: resolvedShiftId,
           total_amount: totalAmount,
           sale_type: saleType.value,
           table_identifier: saleType.value === 'table' ? tableIdentifier.value : null,

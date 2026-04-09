@@ -2,6 +2,7 @@ import { onMounted, onUnmounted } from 'vue'
 import { useInventoryStore } from '@/stores/inventoryStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useOrdersStore } from '@/stores/ordersStore'
+import { useReceiverStore } from '@/stores/receiverStore'
 
 export function useAdminRealtime() {
   const inventoryStore = useInventoryStore()
@@ -35,6 +36,24 @@ export function useStaffRealtime() {
   })
 
   onUnmounted(() => {
+    unsubInventory?.()
+  })
+}
+
+export function useReceiverRealtime() {
+  const receiverStore = useReceiverStore()
+  const inventoryStore = useInventoryStore()
+
+  let unsubQueue: (() => void) | null = null
+  let unsubInventory: (() => void) | null = null
+
+  onMounted(() => {
+    unsubQueue = receiverStore.subscribeRealtime()
+    unsubInventory = inventoryStore.subscribeRealtime()
+  })
+
+  onUnmounted(() => {
+    unsubQueue?.()
     unsubInventory?.()
   })
 }

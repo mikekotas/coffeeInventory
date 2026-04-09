@@ -1,7 +1,7 @@
 # Coffee Inventory Pro — AI Agent Context File
 
 > Paste this file at the start of any AI session to get full project context.
-> Last updated: 2026-04-09 (rev 2)
+> Last updated: 2026-04-09 (rev 3)
 
 ---
 
@@ -9,9 +9,10 @@
 
 A **mobile-first PWA** for coffee shop POS and inventory management.
 
-**Two roles:**
+**Three roles:**
 - **Admin** — Full dashboard: inventory CRUD, product/recipe management, sales analytics (charts), orders management, invoice tracking, staff management
 - **Staff** — POS quick-sale grid, inventory checklist with draft order button, shift management, personal sales history
+- **Receiver** — Real-time order queue (Kitchen Display System), mark orders complete, integrated POS with own shift tracking
 
 **Core business logic (all in DB):**
 - Selling a product automatically deducts its recipe ingredients from inventory (PostgreSQL trigger)
@@ -72,6 +73,12 @@ Run in **Supabase SQL Editor** in this exact order:
 4. `supabase/migrations/004_fix_bugs.sql` — Trigger rewrite + order_items draft update policy
 5. `supabase/migrations/005_orders_delivery.sql` — Adds `delivered` status, `name` on orders, `received`/`received_at` on order_items
 6. `supabase/migrations/006_fix_orders_rls.sql` — Allows order creator (staff) to update their own draft order (needed for saving order name)
+7. `supabase/migrations/007_add_sale_type_and_table.sql` — Adds `sale_type` + `table_identifier` to sales
+8. `supabase/migrations/008_staff_draft_deletion.sql` — RLS: staff can delete own draft order items
+9. `supabase/migrations/009_add_payment_method.sql` — Adds `payment_method` to sales
+10. `supabase/migrations/010_general_notifications.sql` — General notifications improvements
+11. `supabase/migrations/011_receiver_view.sql` — Adds `receiver` role, `completed_at` on sales, receiver RLS policies
+    > **Note:** Run `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'receiver';` FIRST (alone), then run the rest of the file
 
 ### Auth setup
 - Go to Supabase Dashboard → Authentication → Enable **Email** provider
@@ -79,6 +86,10 @@ Run in **Supabase SQL Editor** in this exact order:
 - Promote to admin via SQL Editor:
   ```sql
   UPDATE profiles SET role = 'admin' WHERE id = '<user-uuid>';
+  ```
+- Create receiver account (dedicated kiosk device) and promote:
+  ```sql
+  UPDATE profiles SET role = 'receiver' WHERE id = '<user-uuid>';
   ```
 - All subsequent users who sign up via the app get `role = 'staff'` automatically (via trigger)
 
@@ -106,13 +117,17 @@ coffeeInventory/
 │
 ├── supabase/
 │   ├── migrations/
-│   │   ├── 001_initial_schema.sql   ← full schema + triggers + RLS
-│   │   ├── 002_seed_data.sql        ← seed products + inventory + recipes
-│   │   ├── 003_fix_rls_policies.sql ← RLS INSERT patch (MUST run)
-│   │   ├── 007_add_sale_type_and_table.sql ← Adds table functionality to sales
-│   │   ├── 004_fix_bugs.sql         ← trigger rewrite + order_items draft policy
-│   │   ├── 005_orders_delivery.sql  ← delivery tracking: name, received, delivered status
-│   │   └── 006_fix_orders_rls.sql   ← allow staff to update their own draft order name
+│   │   ├── 001_initial_schema.sql       ← full schema + triggers + RLS
+│   │   ├── 002_seed_data.sql            ← seed products + inventory + recipes
+│   │   ├── 003_fix_rls_policies.sql     ← RLS INSERT patch (MUST run)
+│   │   ├── 004_fix_bugs.sql             ← trigger rewrite + order_items draft policy
+│   │   ├── 005_orders_delivery.sql      ← delivery tracking: name, received, delivered status
+│   │   ├── 006_fix_orders_rls.sql       ← allow staff to update their own draft order name
+│   │   ├── 007_add_sale_type_and_table.sql ← sale_type + table_identifier on sales
+│   │   ├── 008_staff_draft_deletion.sql ← staff can delete own draft order items
+│   │   ├── 009_add_payment_method.sql   ← payment_method on sales
+│   │   ├── 010_general_notifications.sql ← notifications improvements
+│   │   └── 011_receiver_view.sql        ← receiver role + completed_at on sales + RLS
 │   └── functions/
 │       ├── process-sale/index.ts    ← Edge Function: create sale + items
 │       └── finalize-order/index.ts  ← Edge Function: admin finalizes order
@@ -137,12 +152,14 @@ coffeeInventory/
     │   ├── authStore.ts        ← session, profile, role, login/logout/register, staff management
     │   ├── inventoryStore.ts   ← inventory CRUD + realtime subscription
     │   ├── productsStore.ts    ← product CRUD + recipe management
-    │   ├── salesStore.ts       ← fetch sales, daily revenue RPC, top products RPC
+    │   ├── salesStore.ts       ← fetch sales, daily revenue RPC, top products RPC, subscribeRealtime()
     │   ├── ordersStore.ts      ← draft order flow, addItem, removeItem, finalizeOrder
     │   ├── notificationsStore.ts ← fetch alerts, markRead, realtime subscription
-    │   ├── shiftsStore.ts      ← start/end shift, localStorage persistence
-    │   ├── posStore.ts         ← cart state, confirmSale (calls process-sale edge fn)
-    │   └── invoicesStore.ts    ← invoice CRUD + Supabase Storage file upload
+    │   ├── shiftsStore.ts      ← start/end shift, localStorage persistence (key: coffee_inv_shift_id)
+    │   ├── posStore.ts         ← cart state, confirmSale (optional shiftIdOverride param)
+    │   ├── invoicesStore.ts    ← invoice CRUD + Supabase Storage file upload
+    │   ├── receiverStore.ts    ← pendingQueue, recentCompleted, markComplete, subscribeRealtime
+    │   └── receiverShiftsStore.ts ← copy of shiftsStore for receiver (key: coffee_inv_receiver_shift_id) + fetchAllActive()
     │
     ├── composables/
     │   ├── useToast.ts         ← singleton toast system (success/error/warning/info)
@@ -156,7 +173,8 @@ coffeeInventory/
     ├── layouts/
     │   ├── AuthLayout.vue      ← centered card with ambient glow
     │   ├── AdminLayout.vue     ← AdminSidebar + AdminHeader + RouterView
-    │   └── StaffLayout.vue     ← StaffHeader + RouterView + StaffBottomNav (pb-20)
+    │   ├── StaffLayout.vue     ← StaffHeader + RouterView + StaffBottomNav (pb-20)
+    │   └── ReceiverLayout.vue  ← ReceiverHeader + RouterView + bottom nav (Queue/POS/MyShift)
     │
     ├── components/
     │   ├── admin/
@@ -190,6 +208,8 @@ coffeeInventory/
     │   ├── checklist/
     │   │   ├── ChecklistItem.vue     ← item row with "+ Order" button
     │   │   └── OrderDraftPanel.vue   ← bottom drawer: order name input + draft items + qty controls
+    │   ├── receiver/
+    │   │   └── OrderCard.vue         ← order card: items, table/takeaway badge, payment icon, complete btn
     │   ├── charts/
     │   │   ├── RevenueChart.vue      ← Line chart (daily revenue)
     │   │   ├── TopProductsChart.vue  ← Doughnut chart
@@ -214,11 +234,15 @@ coffeeInventory/
         │   ├── Invoices.vue    ← stats (total/monthly), invoice list with file link
         │   ├── Sales.vue       ← 3 tabs: overview/shifts/transactions + charts
         │   └── Staff.vue       ← staff list, role toggle (admin↔staff), invite modal
-        └── staff/
-            ├── POS.vue         ← category filter + product grid + cart FAB
-            ├── Checklist.vue   ← two-tab (Real Stuff/Peripherals) + OrderDraftPanel
-            ├── MyShift.vue     ← start/end shift controls, shift revenue stats
-            └── History.vue     ← personal revenue stats, shift breakdown, sales list
+        ├── staff/
+        │   ├── POS.vue         ← category filter + product grid + cart FAB
+        │   ├── Checklist.vue   ← two-tab (Real Stuff/Peripherals) + OrderDraftPanel
+        │   ├── MyShift.vue     ← start/end shift controls, shift revenue stats
+        │   └── History.vue     ← personal revenue stats, shift breakdown, sales list
+        └── receiver/
+            ├── Queue.vue       ← live FIFO order queue, active shifts strip, mark complete
+            ├── POS.vue         ← same as staff POS, uses receiverShiftsStore for shift context
+            └── MyShift.vue     ← start/end shift for receiver account
 ```
 
 ---
@@ -227,7 +251,7 @@ coffeeInventory/
 
 ### ENUMs
 ```sql
-user_role:             'admin' | 'staff'
+user_role:             'admin' | 'staff' | 'receiver'
 inventory_category:    'real_stuff' | 'peripherals'
 inventory_unit:        'ml' | 'g' | 'units' | 'kg' | 'L' | 'cl'
 product_category:      'coffee' | 'alcohol' | 'soft_drink' | 'beer' | 'food' | 'other'
@@ -249,7 +273,8 @@ recipes           id, product_id(FK→products), inventory_id(FK→inventory),
 shifts            id, staff_id(FK→profiles), started_at, ended_at, notes,
                   is_active, created_at
 sales             id, staff_id(FK→profiles), shift_id(FK→shifts),
-                  total_amount, sale_type, table_identifier, created_at
+                  total_amount, sale_type, table_identifier, payment_method,
+                  completed_at(nullable — NULL=pending queue, NOT NULL=completed), created_at
 sale_items        id, sale_id(FK→sales), product_id(FK→products),
                   qty_sold, unit_price, created_at
 orders            id, created_by(FK→profiles), status, name, notes,
@@ -304,8 +329,8 @@ All tables have RLS enabled. Helper functions:
 | products | any authenticated | admin only | admin only | admin only |
 | recipes | any authenticated | admin only | admin only | admin only |
 | shifts | own row OR admin | own row (`staff_id = auth.uid()`) | own row OR admin | — |
-| sales | own row OR admin | own row | — | — |
-| sale_items | via own sales | via own sales | — | — |
+| sales | own row OR admin OR receiver | own row | admin OR receiver (completed_at only) | — |
+| sale_items | via own sales OR receiver | via own sales | — | — |
 | orders | any authenticated | any authenticated | admin only | admin only |
 | order_items | any authenticated | any authenticated | admin only | admin only |
 | notifications | admin only | TRUE (trigger inserts) | admin only | — |
@@ -373,33 +398,47 @@ Key actions: `addToCart(product)`, `removeFromCart(productId)`, `updateQty()`, `
 State: `invoices`, `loading`
 Key actions: `fetchAll()`, `create(invoiceData, file?)` (uploads file to Supabase Storage if provided), `delete()`
 
+### `receiverStore`
+State: `pendingQueue` (Sale[]), `recentCompleted` (Sale[], last 10), `loading`, `completing` (string | null — tracks which saleId is being marked)
+Computed: `pendingCount`
+Key actions: `fetchQueue()` (pending: completed_at IS NULL, ASC; recent: last 10 completed DESC), `markComplete(saleId)` (sets completed_at + optimistic local move from pending→completed), `subscribeRealtime()` (channel `sales-changes`: INSERT → push to pending, UPDATE → move to completed when completed_at is set)
+
+### `receiverShiftsStore`
+State: same shape as `shiftsStore`
+Key difference: uses `LS_KEYS.receiverShiftId` (`coffee_inv_receiver_shift_id`) to avoid collision
+Extra action: `fetchAllActive()` — returns all currently active shifts across all staff (used for the "who's on shift" strip in Queue.vue)
+
 ---
 
 ## 10. Routing & Auth Flow
 
 ### Route structure
 ```
-/login                     → AuthLayout > Login.vue          (guest only)
-/admin/dashboard           → AdminLayout > Dashboard.vue     (admin only)
-/admin/inventory           → AdminLayout > Inventory.vue     (admin only)
-/admin/products            → AdminLayout > Products.vue      (admin only)
-/admin/recipes             → AdminLayout > Recipes.vue       (admin only)
-/admin/orders              → AdminLayout > Orders.vue        (admin only)
-/admin/invoices            → AdminLayout > Invoices.vue      (admin only)
-/admin/sales               → AdminLayout > Sales.vue         (admin only)
-/admin/staff               → AdminLayout > Staff.vue         (admin only)
-/staff/pos                 → StaffLayout > POS.vue           (authenticated)
-/staff/checklist           → StaffLayout > Checklist.vue     (authenticated)
-/staff/my-shift            → StaffLayout > MyShift.vue       (authenticated)
-/staff/history             → StaffLayout > History.vue       (authenticated)
+/login                     → AuthLayout > Login.vue             (guest only)
+/admin/dashboard           → AdminLayout > Dashboard.vue        (admin only)
+/admin/inventory           → AdminLayout > Inventory.vue        (admin only)
+/admin/products            → AdminLayout > Products.vue         (admin only)
+/admin/recipes             → AdminLayout > Recipes.vue          (admin only)
+/admin/orders              → AdminLayout > Orders.vue           (admin only)
+/admin/invoices            → AdminLayout > Invoices.vue         (admin only)
+/admin/sales               → AdminLayout > Sales.vue            (admin only)
+/admin/staff               → AdminLayout > Staff.vue            (admin only)
+/staff/pos                 → StaffLayout > POS.vue              (staff only)
+/staff/checklist           → StaffLayout > Checklist.vue        (staff only)
+/staff/my-shift            → StaffLayout > MyShift.vue          (staff only)
+/staff/history             → StaffLayout > History.vue          (staff only)
+/receiver/queue            → ReceiverLayout > Queue.vue         (receiver only)
+/receiver/pos              → ReceiverLayout > POS.vue           (receiver only)
+/receiver/my-shift         → ReceiverLayout > MyShift.vue       (receiver only)
 ```
 
 ### Navigation guard (`router/index.ts` `beforeEach`)
 1. Waits for `authStore.loading` to be false (polls every 50ms)
 2. Guest trying to access protected route → redirect to `/login`
 3. Authenticated user trying to access `/login` → redirect to role-appropriate home
-4. Staff trying to access `/admin/*` → redirect to `/staff/pos`
-5. Root `/` redirects: admin → `/admin/dashboard`, staff → `/staff/pos`
+4. Staff/receiver trying to access `/admin/*` → redirect to role-appropriate home
+5. Staff/admin trying to access `/receiver/*` → redirect to role-appropriate home
+6. Root `/` redirects: admin → `/admin/dashboard`, receiver → `/receiver/queue`, staff → `/staff/pos`
 
 ---
 
@@ -556,6 +595,17 @@ Added capability to assign POS sales to a specific table.
 - Added `payment_method` (`cash` or `card`) to the `sales` table (`009_add_payment_method.sql`).
 - Added toggle switches to `SaleCart.vue` to allow staff to designate payment method on checkout.
 - Display payment icons (Banknote/CreditCard) in both Staff `History.vue` and Admin `Sales.vue`.
+
+**A14 — Receiver / Kitchen Display View**
+- Added `receiver` as a third `user_role` enum value (`011_receiver_view.sql`).
+- Added `completed_at TIMESTAMPTZ` to `sales` table: `NULL` = pending in queue, `NOT NULL` = completed.
+- New RLS policies: receiver can SELECT all sales/sale_items, UPDATE `completed_at`, SELECT all shifts.
+- New stores: `receiverStore` (order queue + realtime channel `sales-changes`), `receiverShiftsStore` (own LS key `coffee_inv_receiver_shift_id` + `fetchAllActive()` for shift display).
+- New layout: `ReceiverLayout.vue` — kiosk-optimized, 3-tab bottom nav (Queue / POS / My Shift).
+- New pages: `receiver/Queue.vue` (live FIFO queue with active-shifts strip), `receiver/POS.vue` (same as staff POS), `receiver/MyShift.vue`.
+- `posStore.confirmSale()` accepts optional `shiftIdOverride` param for receiver context.
+- `useReceiverRealtime()` composable added to `useRealtime.ts`.
+- **Rule:** Receiver is a dedicated kiosk role. One receiver account per display device. Sales placed from receiver POS are attributed to the receiver's own shift and account.
 
 **A14 — Custom System Notifications**
 - Decoupled `notifications` from `inventory_id` by allowing it to be nullable, opening up generic usage (`010_general_notifications.sql`).

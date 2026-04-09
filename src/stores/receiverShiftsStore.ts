@@ -5,7 +5,7 @@ import { useAuthStore } from './authStore'
 import { LS_KEYS } from '@/lib/constants'
 import type { Shift } from '@/types'
 
-export const useShiftsStore = defineStore('shifts', () => {
+export const useReceiverShiftsStore = defineStore('receiverShifts', () => {
   const currentShift = ref<Shift | null>(null)
   const shifts = ref<Shift[]>([])
   const loading = ref(false)
@@ -22,14 +22,12 @@ export const useShiftsStore = defineStore('shifts', () => {
   })
 
   async function initialize() {
-    // Restore shift from localStorage
-    const savedShiftId = localStorage.getItem(LS_KEYS.currentShiftId)
+    const savedShiftId = localStorage.getItem(LS_KEYS.receiverShiftId)
     if (savedShiftId) {
       await fetchShiftById(savedShiftId)
-      // If shift is no longer active, clear it
       if (currentShift.value && !currentShift.value.is_active) {
         currentShift.value = null
-        localStorage.removeItem(LS_KEYS.currentShiftId)
+        localStorage.removeItem(LS_KEYS.receiverShiftId)
       }
     }
   }
@@ -60,24 +58,21 @@ export const useShiftsStore = defineStore('shifts', () => {
 
     if (error) throw error
     currentShift.value = data as Shift
-    localStorage.setItem(LS_KEYS.currentShiftId, data.id)
+    localStorage.setItem(LS_KEYS.receiverShiftId, data.id)
     return data as Shift
   }
 
   async function endShift(notes?: string) {
     if (!currentShift.value) throw new Error('No active shift')
-
     const authStore = useAuthStore()
 
-    // 1. Calculate shift revenue
     const { data: salesData } = await supabase
       .from('sales')
       .select('total_amount')
       .eq('shift_id', currentShift.value.id)
-    
+
     const totalRevenueNum = salesData?.reduce((sum, s) => sum + s.total_amount, 0) ?? 0
 
-    // 2. End shift
     const { data, error } = await supabase
       .from('shifts')
       .update({
@@ -90,16 +85,15 @@ export const useShiftsStore = defineStore('shifts', () => {
       .single()
 
     if (error) throw error
-    
-    // 3. Fire notification
+
     await supabase.from('notifications').insert({
-      message: `Shift closed by ${data.profile?.full_name ?? authStore.profile?.full_name}. Total Revenue: €${totalRevenueNum.toFixed(2)}`,
+      message: `Receiver shift closed by ${data.profile?.full_name ?? authStore.profile?.full_name}. Total Revenue: €${totalRevenueNum.toFixed(2)}`,
       severity: 'warning',
-      status: 'unread'
+      status: 'unread',
     })
 
     currentShift.value = data as Shift
-    localStorage.removeItem(LS_KEYS.currentShiftId)
+    localStorage.removeItem(LS_KEYS.receiverShiftId)
   }
 
   async function fetchAll(staffId?: string) {
@@ -121,6 +115,18 @@ export const useShiftsStore = defineStore('shifts', () => {
     }
   }
 
+  // Returns all currently active shifts across all users
+  // Used by Queue.vue to display the "who's working" strip
+  async function fetchAllActive(): Promise<Shift[]> {
+    const { data, error } = await supabase
+      .from('shifts')
+      .select('*, profile:profiles(id, full_name)')
+      .eq('is_active', true)
+      .order('started_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []) as Shift[]
+  }
+
   return {
     currentShift,
     shifts,
@@ -132,9 +138,10 @@ export const useShiftsStore = defineStore('shifts', () => {
     startShift,
     endShift,
     fetchAll,
+    fetchAllActive,
   }
 })
 
 if (import.meta.hot) {
-  import.meta.hot.accept(acceptHMRUpdate(useShiftsStore, import.meta.hot))
+  import.meta.hot.accept(acceptHMRUpdate(useReceiverShiftsStore, import.meta.hot))
 }

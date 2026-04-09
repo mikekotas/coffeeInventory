@@ -2,7 +2,7 @@
 // ENUMS (mirroring PostgreSQL enums)
 // ============================================================
 
-export type UserRole = 'admin' | 'staff'
+export type UserRole = 'admin' | 'staff' | 'receiver'
 export type InventoryCategory = 'real_stuff' | 'peripherals'
 export type InventoryUnit = 'ml' | 'g' | 'units' | 'kg' | 'L' | 'cl'
 export type ProductCategory = 'coffee' | 'alcohol' | 'soft_drink' | 'beer' | 'food' | 'other'
@@ -79,6 +79,7 @@ export interface Sale {
   table_identifier?: string | null
   payment_method?: 'cash' | 'card'
   created_at: string
+  completed_at: string | null
   // Joined fields
   profile?: Profile
   shift?: Shift
