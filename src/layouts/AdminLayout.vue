@@ -1,9 +1,14 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AdminSidebar from '@/components/admin/AdminSidebar.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
+import { useAdminRealtime } from '@/composables/useRealtime'
 
 const route = useRoute()
+useAdminRealtime()
+
+const sidebarOpen = ref(false)
 
 const pageTitles: Record<string, string> = {
   'admin-dashboard': 'Dashboard',
@@ -21,10 +26,10 @@ const title = () => pageTitles[route.name as string] ?? 'Admin'
 
 <template>
   <div class="min-h-screen bg-slate-950 flex">
-    <AdminSidebar />
+    <AdminSidebar :mobile-open="sidebarOpen" @close="sidebarOpen = false" />
 
     <div class="flex-1 flex flex-col min-w-0">
-      <AdminHeader :title="title()" />
+      <AdminHeader :title="title()" @toggle-sidebar="sidebarOpen = !sidebarOpen" />
 
       <main class="flex-1 p-4 lg:p-6 overflow-auto">
         <RouterView />

@@ -7,6 +7,12 @@ import {
   Receipt, BarChart3, Users, Coffee
 } from 'lucide-vue-next'
 
+interface Props {
+  mobileOpen?: boolean
+}
+defineProps<Props>()
+const emit = defineEmits<{ close: [] }>()
+
 const route = useRoute()
 const notificationsStore = useNotificationsStore()
 
@@ -25,7 +31,23 @@ const isActive = (routeName: string) => route.name === routeName
 </script>
 
 <template>
-  <aside class="hidden lg:flex flex-col w-56 bg-slate-900 border-r border-slate-800 min-h-screen">
+  <!-- Mobile backdrop -->
+  <Transition name="fade">
+    <div
+      v-if="mobileOpen"
+      class="lg:hidden fixed inset-0 z-40 bg-black/60"
+      @click="emit('close')"
+    />
+  </Transition>
+
+  <!-- Sidebar -->
+  <aside
+    :class="[
+      'flex flex-col w-56 bg-slate-900 border-r border-slate-800 min-h-screen',
+      mobileOpen ? 'fixed inset-y-0 left-0 z-50 flex' : 'hidden',
+      'lg:static lg:flex',
+    ]"
+  >
     <!-- Logo -->
     <div class="flex items-center gap-2.5 px-5 py-5 border-b border-slate-800">
       <div class="w-8 h-8 bg-brand-600 rounded-xl flex items-center justify-center">
@@ -49,6 +71,7 @@ const isActive = (routeName: string) => route.name === routeName
             ? 'bg-brand-600/20 text-brand-400'
             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800',
         ]"
+        @click="emit('close')"
       >
         <component :is="item.icon" class="w-4 h-4 shrink-0" />
         {{ item.label }}
@@ -63,3 +86,8 @@ const isActive = (routeName: string) => route.name === routeName
     </nav>
   </aside>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.15s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

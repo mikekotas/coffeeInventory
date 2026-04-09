@@ -23,7 +23,7 @@ async function addToOrder(item: InventoryItem) {
     await ordersStore.addItem(item.id)
     toast.success('Added to order', `${item.name} added to draft order`)
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = (err as any)?.message ?? String(err)
     console.error('[ChecklistItem] Failed to add to order:', err)
     toast.error('Failed to add to order', msg)
   } finally {

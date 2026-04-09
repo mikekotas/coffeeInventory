@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useToast } from '@/composables/useToast'
-import { Bell, LogOut, ChevronDown, Coffee } from 'lucide-vue-next'
+import { Bell, LogOut, ChevronDown, Coffee, Menu } from 'lucide-vue-next'
 import { ROUTE_NAMES } from '@/lib/constants'
 import NotificationList from '@/components/notifications/NotificationList.vue'
 
@@ -12,6 +12,7 @@ interface Props {
   title?: string
 }
 defineProps<Props>()
+const emit = defineEmits<{ toggleSidebar: [] }>()
 
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
@@ -29,8 +30,15 @@ async function logout() {
 
 <template>
   <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 lg:px-6 py-3 flex items-center justify-between sticky top-0 z-30">
-    <!-- Mobile logo + title -->
     <div class="flex items-center gap-3">
+      <!-- Hamburger (mobile only) -->
+      <button
+        class="lg:hidden p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+        @click="emit('toggleSidebar')"
+      >
+        <Menu class="w-5 h-5" />
+      </button>
+      <!-- Mobile logo (desktop hides it since sidebar has the logo) -->
       <div class="lg:hidden w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
         <Coffee class="w-3.5 h-3.5 text-white" />
       </div>

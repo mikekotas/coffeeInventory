@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase, callEdgeFunction } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './authStore'
 import type { Order, OrderItem } from '@/types'
 
@@ -20,7 +20,7 @@ export const useOrdersStore = defineStore('orders', () => {
         .from('orders')
         .select(`
           *,
-          creator:profiles(id, full_name),
+          creator:profiles!created_by(id, full_name),
           order_items(*, inventory:inventory(*))
         `)
         .order('created_at', { ascending: false })
@@ -36,7 +36,7 @@ export const useOrdersStore = defineStore('orders', () => {
       .from('orders')
       .select(`
         *,
-        creator:profiles(id, full_name),
+        creator:profiles!created_by(id, full_name),
         order_items(*, inventory:inventory(*))
       `)
       .eq('status', 'draft')
@@ -54,7 +54,7 @@ export const useOrdersStore = defineStore('orders', () => {
     // First, check the DB for an existing draft (in case fetchDraftOrder wasn't called)
     const { data: existing, error: fetchErr } = await supabase
       .from('orders')
-      .select(`*, creator:profiles(id, full_name), order_items(*, inventory:inventory(*))`)
+      .select(`*, creator:profiles!created_by(id, full_name), order_items(*, inventory:inventory(*))`)
       .eq('status', 'draft')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -75,7 +75,7 @@ export const useOrdersStore = defineStore('orders', () => {
     const { data, error: err } = await supabase
       .from('orders')
       .insert({ created_by: userId, status: 'draft' })
-      .select(`*, creator:profiles(id, full_name), order_items(*, inventory:inventory(*))`)
+      .select(`*, creator:profiles!created_by(id, full_name), order_items(*, inventory:inventory(*))`)
       .single()
 
     if (err) throw err
@@ -127,6 +127,11 @@ export const useOrdersStore = defineStore('orders', () => {
     if (draftOrder.value?.order_items) {
       draftOrder.value.order_items = draftOrder.value.order_items.filter(i => i.id !== orderItemId)
     }
+    for (const order of orders.value) {
+      if (order.order_items) {
+        order.order_items = order.order_items.filter(i => i.id !== orderItemId)
+      }
+    }
   }
 
   async function updateItemQty(orderItemId: string, qty: number) {
@@ -141,10 +146,26 @@ export const useOrdersStore = defineStore('orders', () => {
       const idx = draftOrder.value.order_items.findIndex(i => i.id === orderItemId)
       if (idx !== -1) draftOrder.value.order_items[idx] = data as OrderItem
     }
+    for (const order of orders.value) {
+      if (order.order_items) {
+        const idx = order.order_items.findIndex(i => i.id === orderItemId)
+        if (idx !== -1) { order.order_items[idx] = data as OrderItem; break }
+      }
+    }
   }
 
   async function finalizeOrder(orderId: string) {
-    await callEdgeFunction('finalize-order', { order_id: orderId })
+    const authStore = useAuthStore()
+    const { error: err } = await supabase
+      .from('orders')
+      .update({
+        status: 'finalized',
+        finalized_at: new Date().toISOString(),
+        finalized_by: authStore.profile!.id,
+      })
+      .eq('id', orderId)
+      .eq('status', 'draft')
+    if (err) throw err
     await fetchAll()
     if (draftOrder.value?.id === orderId) {
       draftOrder.value = null

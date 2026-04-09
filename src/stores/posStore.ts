@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
-import { callEdgeFunction } from '@/lib/supabase'
 import { useAuthStore } from './authStore'
 import { useShiftsStore } from './shiftsStore'
 import type { Product, CartItem } from '@/types'
@@ -76,22 +75,33 @@ export const usePosStore = defineStore('pos', () => {
     error.value = null
 
     try {
-      const items = cart.value.map(item => ({
+      const totalAmount = cart.value.reduce((sum, item) => sum + item.product.base_price * item.qty, 0)
+
+      const { data: sale, error: saleErr } = await supabase
+        .from('sales')
+        .insert({
+          staff_id: authStore.profile.id,
+          shift_id: shiftsStore.currentShift?.id ?? null,
+          total_amount: totalAmount,
+        })
+        .select('id')
+        .single()
+      if (saleErr) throw saleErr
+
+      const saleItems = cart.value.map(item => ({
+        sale_id: sale.id,
         product_id: item.product.id,
         qty_sold: item.qty,
         unit_price: item.product.base_price,
       }))
+      const { error: itemsErr } = await supabase.from('sale_items').insert(saleItems)
+      if (itemsErr) throw itemsErr
 
-      const result = await callEdgeFunction<{ sale_id: string; total_amount: number }>('process-sale', {
-        items,
-        shift_id: shiftsStore.currentShift?.id ?? null,
-      })
-
-      lastSaleId.value = result.sale_id
+      lastSaleId.value = sale.id
       clearCart()
-      return result.sale_id
+      return sale.id
     } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Sale failed'
+      error.value = (err as any)?.message ?? 'Sale failed'
       throw err
     } finally {
       submitting.value = false

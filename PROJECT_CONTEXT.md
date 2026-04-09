@@ -479,22 +479,37 @@ localStorage.getItem(LS_KEYS.currentShiftId) // = 'coffee_app_shift_id'
 
 ---
 
-## 13. Outstanding Issues (as of 2026-04-09)
+## 13. Applied Fixes (as of 2026-04-09)
 
-### Issue A: "Failed to add to order" on Checklist page
-**What:** Staff tap "+ Order" button on any inventory item → toast shows "Failed to add to order".
-**Root cause:** `003_fix_rls_policies.sql` migration has not been run yet in Supabase.
-**Fix:** Run `003_fix_rls_policies.sql` contents in Supabase SQL Editor. The file is at `supabase/migrations/003_fix_rls_policies.sql`.
-**After fix:** The `orders` and `order_items` INSERT RLS policies will use `auth.uid() IS NOT NULL` which works correctly.
+### Fix A: RLS INSERT policies + trigger bug + PostgREST disambiguation
+All three issues below were resolved together:
 
-### Issue B: POS sales do not record (edge functions not deployed)
-**What:** Confirming a sale in POS returns an error because `process-sale` edge function is not deployed.
-**Fix:** Run:
-```bash
-supabase functions deploy process-sale
-supabase functions deploy finalize-order
-```
-Requires Supabase CLI installed and project linked (`supabase link --project-ref <ref>`).
+**A1 — "Failed to add to order" (RLS)**
+Run `003_fix_rls_policies.sql` in Supabase SQL Editor. Replaces `is_authenticated()` SECURITY DEFINER calls with `auth.uid() IS NOT NULL` in INSERT/SELECT policies for `orders`, `order_items`, `inventory`, `products`, `recipes`.
+
+**A2 — POS sale aborting when stock hits warning threshold (trigger bug)**
+Run `004_fix_bugs.sql` in Supabase SQL Editor. Rewrites `deduct_stock_on_sale()` trigger: removes the broken `INSERT INTO orders ... SELECT NEW.sale_id` (sale UUID used as profile FK → FK violation), uses correct `staff_id` from sales table. Wraps notification/auto-order section in `EXCEPTION WHEN OTHERS` so non-critical errors never abort a sale.
+
+**A2 also adds**: `order_items_update_draft` RLS policy so staff can update quantities in draft orders.
+
+**A3 — POS sale and order finalization (edge functions)**
+Removed dependency on `process-sale` and `finalize-order` edge functions. Both operations now use direct Supabase client calls:
+- `posStore.confirmSale()` → inserts into `sales` then `sale_items` directly (trigger still fires)
+- `ordersStore.finalizeOrder()` → updates `orders` row directly (admin's RLS policy allows it)
+
+**A4 — PostgREST "more than one relationship" error on orders queries**
+`orders` has two FKs to `profiles` (`created_by` and `finalized_by`). All queries with `creator:profiles(...)` changed to `creator:profiles!created_by(...)` to disambiguate.
+
+**A5 — +/- and remove buttons not reflecting in admin Orders page**
+`updateItemQty()` and `removeItem()` in `ordersStore` only updated `draftOrder` state but not the `orders` list (which Orders.vue iterates). Fixed: both functions now sync changes to both `draftOrder` and `orders`.
+
+**A6 — Realtime subscriptions never initialized**
+`useAdminRealtime()` and `useStaffRealtime()` existed but were never called. Added to `AdminLayout.vue` and `StaffLayout.vue` respectively.
+- **Admin realtime covers:** inventory changes, new notifications, order_items inserts
+- **Staff realtime covers:** inventory changes (stock levels update live after sales)
+
+**A7 — Admin sidebar hidden on mobile**
+`AdminSidebar` had `hidden lg:flex` with no mobile toggle. Added hamburger button (`Menu` icon) in `AdminHeader` (mobile only, `lg:hidden`). Sidebar now overlays as a drawer on mobile with a backdrop. Tapping a nav item or the backdrop closes it.
 
 ---
 
