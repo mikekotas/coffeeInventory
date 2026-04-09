@@ -126,7 +126,7 @@ export interface OrderItem {
 
 export interface Notification {
   id: string
-  inventory_id: string
+  inventory_id: string | null
   message: string
   status: NotificationStatus
   severity: NotificationSeverity

@@ -557,6 +557,12 @@ Added capability to assign POS sales to a specific table.
 - Added toggle switches to `SaleCart.vue` to allow staff to designate payment method on checkout.
 - Display payment icons (Banknote/CreditCard) in both Staff `History.vue` and Admin `Sales.vue`.
 
+**A14 — Custom System Notifications**
+- Decoupled `notifications` from `inventory_id` by allowing it to be nullable, opening up generic usage (`010_general_notifications.sql`).
+- Added policy allowing Staff to push items to the `notifications` table.
+- Implemented an interactive "Notify Admin" button to the Staff `OrderDraftPanel.vue`.
+- Updated `shiftsStore.ts` so `endShift()` automatically calculates total sales value and pushes a notification directly to the Admin.
+
 ---
 
 ## 14. Common Development Tasks

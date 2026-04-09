@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useOrdersStore } from '@/stores/ordersStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useToast } from '@/composables/useToast'
+import { supabase } from '@/lib/supabase'
 import AppDrawer from '@/components/ui/AppDrawer.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
-import { Minus, Plus, Trash2, ClipboardList, Cpu } from 'lucide-vue-next'
+import { Minus, Plus, Trash2, ClipboardList, Cpu, Bell } from 'lucide-vue-next'
 
 interface Props {
   open: boolean
@@ -25,6 +28,28 @@ watch(() => ordersStore.draftOrder?.name, (val) => {
 async function handleNameBlur() {
   if (orderName.value !== (ordersStore.draftOrder?.name ?? '')) {
     await ordersStore.updateDraftName(orderName.value)
+  }
+}
+
+const authStore = useAuthStore()
+const toast = useToast()
+const notifying = ref(false)
+
+async function notifyAdmin() {
+  if (!authStore.profile) return
+  notifying.value = true
+  try {
+    const { error } = await supabase.from('notifications').insert({
+      message: `${authStore.profile.full_name} prepared a draft order for review. (${ordersStore.draftItemCount} items)`,
+      severity: 'warning',
+      status: 'unread'
+    })
+    if (error) throw error
+    toast.success('Admin notified')
+  } catch (err: any) {
+    toast.error('Failed to notify admin', err.message)
+  } finally {
+    notifying.value = false
   }
 }
 </script>
@@ -106,7 +131,18 @@ async function handleNameBlur() {
         <p class="text-xs text-slate-500 mb-3 text-center">
           {{ ordersStore.draftItemCount }} item(s) pending order · Admin will review and place the order
         </p>
-        <AppButton variant="ghost" full-width @click="emit('close')">Close</AppButton>
+        <div class="flex gap-2">
+          <AppButton variant="ghost" @click="emit('close')">Close</AppButton>
+          <AppButton
+            v-if="ordersStore.draftItemCount > 0"
+            full-width
+            variant="secondary"
+            :loading="notifying"
+            @click="notifyAdmin"
+          >
+            <Bell class="w-4 h-4 mr-2" /> Notify Admin
+          </AppButton>
+        </div>
       </div>
     </template>
   </AppDrawer>

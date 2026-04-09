@@ -74,6 +74,17 @@ export const useShiftsStore = defineStore('shifts', () => {
   async function endShift(notes?: string) {
     if (!currentShift.value) throw new Error('No active shift')
 
+    const authStore = useAuthStore()
+
+    // 1. Calculate shift revenue
+    const { data: salesData } = await supabase
+      .from('sales')
+      .select('total_amount')
+      .eq('shift_id', currentShift.value.id)
+    
+    const totalRevenueNum = salesData?.reduce((sum, s) => sum + s.total_amount, 0) ?? 0
+
+    // 2. End shift
     const { data, error } = await supabase
       .from('shifts')
       .update({
@@ -82,10 +93,18 @@ export const useShiftsStore = defineStore('shifts', () => {
         notes: notes ?? currentShift.value.notes,
       })
       .eq('id', currentShift.value.id)
-      .select()
+      .select('*, profile:profiles(id, full_name)')
       .single()
 
     if (error) throw error
+    
+    // 3. Fire notification
+    await supabase.from('notifications').insert({
+      message: `Shift closed by ${data.profile?.full_name ?? authStore.profile?.full_name}. Total Revenue: €${totalRevenueNum.toFixed(2)}`,
+      severity: 'warning',
+      status: 'unread'
+    })
+
     currentShift.value = data as Shift
     localStorage.removeItem(LS_KEYS.currentShiftId)
   }
