@@ -1,7 +1,7 @@
 # Coffee Inventory Pro — AI Agent Context File
 
 > Paste this file at the start of any AI session to get full project context.
-> Last updated: 2026-04-09
+> Last updated: 2026-04-09 (rev 2)
 
 ---
 
@@ -69,6 +69,9 @@ Run in **Supabase SQL Editor** in this exact order:
 1. `supabase/migrations/001_initial_schema.sql` — All tables, triggers, functions, RLS policies
 2. `supabase/migrations/002_seed_data.sql` — 31 inventory items + 32 products + full recipes
 3. `supabase/migrations/003_fix_rls_policies.sql` — RLS patch (fixes INSERT WITH CHECK bug)
+4. `supabase/migrations/004_fix_bugs.sql` — Trigger rewrite + order_items draft update policy
+5. `supabase/migrations/005_orders_delivery.sql` — Adds `delivered` status, `name` on orders, `received`/`received_at` on order_items
+6. `supabase/migrations/006_fix_orders_rls.sql` — Allows order creator (staff) to update their own draft order (needed for saving order name)
 
 ### Auth setup
 - Go to Supabase Dashboard → Authentication → Enable **Email** provider
@@ -105,7 +108,11 @@ coffeeInventory/
 │   ├── migrations/
 │   │   ├── 001_initial_schema.sql   ← full schema + triggers + RLS
 │   │   ├── 002_seed_data.sql        ← seed products + inventory + recipes
-│   │   └── 003_fix_rls_policies.sql ← RLS INSERT patch (MUST run)
+│   │   ├── 003_fix_rls_policies.sql ← RLS INSERT patch (MUST run)
+│   │   ├── 007_add_sale_type_and_table.sql ← Adds table functionality to sales
+│   │   ├── 004_fix_bugs.sql         ← trigger rewrite + order_items draft policy
+│   │   ├── 005_orders_delivery.sql  ← delivery tracking: name, received, delivered status
+│   │   └── 006_fix_orders_rls.sql   ← allow staff to update their own draft order name
 │   └── functions/
 │       ├── process-sale/index.ts    ← Edge Function: create sale + items
 │       └── finalize-order/index.ts  ← Edge Function: admin finalizes order
@@ -182,7 +189,7 @@ coffeeInventory/
     │   │   └── ShiftBanner.vue       ← shows shift duration or "Start Shift" prompt
     │   ├── checklist/
     │   │   ├── ChecklistItem.vue     ← item row with "+ Order" button
-    │   │   └── OrderDraftPanel.vue   ← bottom drawer showing draft order items
+    │   │   └── OrderDraftPanel.vue   ← bottom drawer: order name input + draft items + qty controls
     │   ├── charts/
     │   │   ├── RevenueChart.vue      ← Line chart (daily revenue)
     │   │   ├── TopProductsChart.vue  ← Doughnut chart
@@ -203,7 +210,7 @@ coffeeInventory/
         │   ├── Inventory.vue   ← search + tabs (real_stuff/peripherals) + CRUD table
         │   ├── Products.vue    ← product list with RecipeBuilder modal
         │   ├── Recipes.vue     ← product cards grid opening RecipeBuilder
-        │   ├── Orders.vue      ← tabbed draft/finalized, qty controls, finalize button
+        │   ├── Orders.vue      ← 3 tabs: Pending / To Be Delivered / Delivered; per-item delivery checkboxes update inventory
         │   ├── Invoices.vue    ← stats (total/monthly), invoice list with file link
         │   ├── Sales.vue       ← 3 tabs: overview/shifts/transactions + charts
         │   └── Staff.vue       ← staff list, role toggle (admin↔staff), invite modal
@@ -224,10 +231,11 @@ user_role:             'admin' | 'staff'
 inventory_category:    'real_stuff' | 'peripherals'
 inventory_unit:        'ml' | 'g' | 'units' | 'kg' | 'L' | 'cl'
 product_category:      'coffee' | 'alcohol' | 'soft_drink' | 'beer' | 'food' | 'other'
-order_status:          'draft' | 'finalized'
+order_status:          'draft' | 'finalized' | 'delivered'
 order_source:          'manual' | 'auto_threshold'
 notification_status:   'unread' | 'read'
 notification_severity: 'warning' | 'critical'
+sale_type:             'takeaway' | 'table'
 ```
 
 ### Tables
@@ -241,13 +249,13 @@ recipes           id, product_id(FK→products), inventory_id(FK→inventory),
 shifts            id, staff_id(FK→profiles), started_at, ended_at, notes,
                   is_active, created_at
 sales             id, staff_id(FK→profiles), shift_id(FK→shifts),
-                  total_amount, created_at
+                  total_amount, sale_type, table_identifier, created_at
 sale_items        id, sale_id(FK→sales), product_id(FK→products),
                   qty_sold, unit_price, created_at
-orders            id, created_by(FK→profiles), status, notes,
+orders            id, created_by(FK→profiles), status, name, notes,
                   created_at, finalized_at, finalized_by(FK→profiles)
 order_items       id, order_id(FK→orders), inventory_id(FK→inventory),
-                  quantity_requested, source, notes, created_at
+                  quantity_requested, source, notes, received, received_at, created_at
 notifications     id, inventory_id(FK→inventory), message, status,
                   severity, created_at
 invoices          id, admin_id(FK→profiles), amount, description, supplier,
@@ -345,7 +353,7 @@ Key actions: `fetchAll(limitDays)`, `fetchMine(staffId)`, `fetchByShift(shiftId)
 ### `ordersStore`
 State: `orders`, `draftOrder`, `loading`
 Computed: `draftItems`, `draftItemCount`
-Key actions: `fetchAll()`, `fetchDraftOrder()`, `ensureDraftOrder()` (checks DB first, then inserts if none), `addItem(inventoryId, qty, notes)`, `removeItem()`, `updateItemQty()`, `finalizeOrder()`, `subscribeRealtime()`
+Key actions: `fetchAll()`, `fetchDraftOrder()`, `ensureDraftOrder()` (checks DB first, then inserts if none), `addItem(inventoryId, qty, notes)`, `removeItem()` (auto-deletes order if last item removed), `updateItemQty()`, `updateDraftName(name)`, `finalizeOrder()`, `markItemReceived(orderItemId, inventoryId, qty)` (marks received + increments inventory stock), `markOrderDelivered(orderId)`, `subscribeRealtime()`
 
 ### `notificationsStore`
 State: `notifications`, `unreadCount`, `loading`
@@ -516,10 +524,25 @@ Removed dependency on `process-sale` and `finalize-order` edge functions. Both o
 **Fix:** Removed `useStaffRealtime()` from `StaffLayout.vue`. It stays in `POS.vue` only.
 **Rule:** Never add a realtime subscription to a layout if any child page already subscribes to the same channel. Realtime composables belong in the leaf page component that actually uses the data.
 
+**A10 — Orders delivery tracking + order naming**
+Added full delivery lifecycle: `draft` → `finalized` (placed with supplier) → `delivered` (all items received).
+- Migration `005_orders_delivery.sql`: adds `delivered` to `order_status` ENUM, `name TEXT` to `orders`, `received BOOLEAN` + `received_at TIMESTAMPTZ` to `order_items`.
+- Migration `006_fix_orders_rls.sql`: adds `orders_update_creator_draft` policy so staff can update their own draft order (required for saving order name).
+- Admin Orders page now has 3 tabs: **Pending** (draft), **To Be Delivered** (finalized — per-item checkboxes update `inventory.stock_qty` on receipt), **Delivered** (history).
+- Staff `OrderDraftPanel` has a name input at the top; saves via `ordersStore.updateDraftName()`.
+- `removeItem()` auto-deletes the parent draft order when its last item is removed.
+- **Rule:** Staff can only name/edit draft orders they created. Admin can update any order regardless of status.
+
 **A9 — Dev server not accessible from mobile / other devices on local network**
 Vite default config binds only to `127.0.0.1` (localhost). Accessing the dev server via the machine's LAN IP (e.g. `192.168.1.x:5173`) from a mobile device caused JS module requests to fail silently — the initial HTML loads but all `<script type="module">` fetches return connection errors, leaving the page blank.
 **Fix:** Added `server: { host: true }` to `vite.config.ts`. This binds Vite to `0.0.0.0` (all interfaces), making the dev server accessible from any device on the same network.
 **Note:** Requires restarting the dev server after the config change.
+
+**A10 — Table vs Takeaway sales feature**
+Added capability to assign POS sales to a specific table.
+- Added `supabase/migrations/007_add_sale_type_and_table.sql` which adds `sale_type` (checked text) and `table_identifier` to the `sales` table.
+- Modified POS cart UI (`SaleCart.vue`) to allow selecting Takeaway/Table and inputting table numbers.
+- Added UI badging indicating Takeaway vs Table on Staff History and Admin Sales pages.
 
 ---
 

@@ -80,7 +80,11 @@ const totalRevenue = computed(() =>
             class="flex items-start gap-3 px-4 py-3"
           >
             <div class="flex-1 min-w-0">
-              <p class="text-xs text-slate-400">{{ formatDate(sale.created_at) }}</p>
+              <div class="flex items-center gap-2">
+                <p class="text-xs text-slate-400">{{ formatDate(sale.created_at) }}</p>
+                <span v-if="sale.sale_type === 'table'" class="text-[10px] font-semibold tracking-wider uppercase text-brand-400 bg-brand-500/10 px-1.5 py-0.5 rounded">{{ sale.table_identifier }}</span>
+                <span v-else-if="sale.sale_type === 'takeaway'" class="text-[10px] font-semibold tracking-wider uppercase text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">Takeaway</span>
+              </div>
               <p class="text-xs text-slate-500 mt-0.5 truncate">
                 {{ sale.sale_items?.map(si => si.product?.name).join(', ') || '—' }}
               </p>

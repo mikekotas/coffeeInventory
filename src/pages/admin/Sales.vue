@@ -110,7 +110,11 @@ const avgOrder = () => store.sales.length > 0 ? store.totalRevenue / store.sales
             </div>
             <div class="text-right">
               <p class="text-sm font-semibold text-white">{{ formatCurrency(sale.total_amount) }}</p>
-              <p class="text-xs text-slate-500">{{ sale.sale_items?.length ?? 0 }} items</p>
+              <p class="text-xs text-slate-500">
+                <span v-if="sale.sale_type === 'table'" class="text-brand-400 mr-1 font-medium">{{ sale.table_identifier }}</span>
+                <span v-else-if="sale.sale_type === 'takeaway'" class="text-blue-400 mr-1 font-medium">Takeaway</span>
+                {{ sale.sale_items?.length ?? 0 }} items
+              </p>
             </div>
           </div>
         </div>

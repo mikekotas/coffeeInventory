@@ -12,6 +12,8 @@ export const usePosStore = defineStore('pos', () => {
   const submitting = ref(false)
   const error = ref<string | null>(null)
   const lastSaleId = ref<string | null>(null)
+  const saleType = ref<'takeaway' | 'table'>('takeaway')
+  const tableIdentifier = ref<string>('')
 
   const cartTotal = computed(() =>
     cart.value.reduce((sum, item) => sum + item.product.base_price * item.qty, 0)
@@ -61,6 +63,8 @@ export const usePosStore = defineStore('pos', () => {
 
   function clearCart() {
     cart.value = []
+    saleType.value = 'takeaway'
+    tableIdentifier.value = ''
   }
 
   async function confirmSale(): Promise<string> {
@@ -83,6 +87,8 @@ export const usePosStore = defineStore('pos', () => {
           staff_id: authStore.profile.id,
           shift_id: shiftsStore.currentShift?.id ?? null,
           total_amount: totalAmount,
+          sale_type: saleType.value,
+          table_identifier: saleType.value === 'table' ? tableIdentifier.value : null,
         })
         .select('id')
         .single()
@@ -115,6 +121,8 @@ export const usePosStore = defineStore('pos', () => {
     submitting,
     error,
     lastSaleId,
+    saleType,
+    tableIdentifier,
     cartTotal,
     cartItemCount,
     isEmpty,

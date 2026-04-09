@@ -75,6 +75,8 @@ export interface Sale {
   staff_id: string
   shift_id: string | null
   total_amount: number
+  sale_type?: 'takeaway' | 'table'
+  table_identifier?: string | null
   created_at: string
   // Joined fields
   profile?: Profile

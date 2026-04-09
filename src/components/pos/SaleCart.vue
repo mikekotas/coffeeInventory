@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { usePosStore } from '@/stores/posStore'
 import { useToast } from '@/composables/useToast'
 import { useFormatters } from '@/composables/useFormatters'
 import AppDrawer from '@/components/ui/AppDrawer.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import AppInput from '@/components/ui/AppInput.vue'
 import { Minus, Plus, Trash2, ShoppingCart } from 'lucide-vue-next'
 
 interface Props {
@@ -19,8 +20,14 @@ const toast = useToast()
 const { formatCurrency } = useFormatters()
 const confirming = ref(false)
 
+const canConfirm = computed(() => {
+  if (posStore.isEmpty) return false
+  if (posStore.saleType === 'table' && !posStore.tableIdentifier.trim()) return false
+  return true
+})
+
 async function handleConfirm() {
-  if (posStore.isEmpty) return
+  if (!canConfirm.value) return
   confirming.value = true
   try {
     const saleId = await posStore.confirmSale()
@@ -93,12 +100,38 @@ async function handleConfirm() {
           <span class="text-xl font-bold text-white">{{ formatCurrency(posStore.cartTotal) }}</span>
         </div>
 
+        <!-- Sale Type Selection -->
+        <div class="space-y-3 pb-2">
+          <div class="flex p-1 bg-slate-900 rounded-lg">
+            <button
+              class="flex-1 py-1.5 text-sm font-medium rounded-md transition-colors"
+              :class="posStore.saleType === 'takeaway' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'"
+              @click="posStore.saleType = 'takeaway'"
+            >
+              Takeaway
+            </button>
+            <button
+              class="flex-1 py-1.5 text-sm font-medium rounded-md transition-colors"
+              :class="posStore.saleType === 'table' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'"
+              @click="posStore.saleType = 'table'"
+            >
+              Table
+            </button>
+          </div>
+          
+          <AppInput
+            v-if="posStore.saleType === 'table'"
+            v-model="posStore.tableIdentifier"
+            placeholder="Table number or name..."
+          />
+        </div>
+
         <div class="flex gap-2">
           <AppButton variant="ghost" @click="posStore.clearCart(); emit('close')">Clear</AppButton>
           <AppButton
             full-width
             :loading="confirming"
-            :disabled="posStore.isEmpty"
+            :disabled="!canConfirm"
             @click="handleConfirm"
           >
             Confirm Sale
