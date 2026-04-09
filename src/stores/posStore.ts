@@ -1,0 +1,118 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { supabase } from '@/lib/supabase'
+import { callEdgeFunction } from '@/lib/supabase'
+import { useAuthStore } from './authStore'
+import { useShiftsStore } from './shiftsStore'
+import type { Product, CartItem } from '@/types'
+
+export const usePosStore = defineStore('pos', () => {
+  const cart = ref<CartItem[]>([])
+  const products = ref<Product[]>([])
+  const loading = ref(false)
+  const submitting = ref(false)
+  const error = ref<string | null>(null)
+  const lastSaleId = ref<string | null>(null)
+
+  const cartTotal = computed(() =>
+    cart.value.reduce((sum, item) => sum + item.product.base_price * item.qty, 0)
+  )
+  const cartItemCount = computed(() =>
+    cart.value.reduce((sum, item) => sum + item.qty, 0)
+  )
+  const isEmpty = computed(() => cart.value.length === 0)
+
+  async function fetchProducts() {
+    loading.value = true
+    try {
+      const { data, error: err } = await supabase
+        .from('products')
+        .select('*')
+        .eq('is_active', true)
+        .order('category')
+        .order('name')
+      if (err) throw err
+      products.value = data ?? []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function addToCart(product: Product, qty = 1) {
+    const existing = cart.value.find(i => i.product.id === product.id)
+    if (existing) {
+      existing.qty += qty
+    } else {
+      cart.value.push({ product, qty })
+    }
+  }
+
+  function removeFromCart(productId: string) {
+    cart.value = cart.value.filter(i => i.product.id !== productId)
+  }
+
+  function updateQty(productId: string, qty: number) {
+    if (qty <= 0) {
+      removeFromCart(productId)
+      return
+    }
+    const item = cart.value.find(i => i.product.id === productId)
+    if (item) item.qty = qty
+  }
+
+  function clearCart() {
+    cart.value = []
+  }
+
+  async function confirmSale(): Promise<string> {
+    if (cart.value.length === 0) throw new Error('Cart is empty')
+
+    const authStore = useAuthStore()
+    const shiftsStore = useShiftsStore()
+
+    if (!authStore.profile) throw new Error('Not authenticated')
+
+    submitting.value = true
+    error.value = null
+
+    try {
+      const items = cart.value.map(item => ({
+        product_id: item.product.id,
+        qty_sold: item.qty,
+        unit_price: item.product.base_price,
+      }))
+
+      const result = await callEdgeFunction<{ sale_id: string; total_amount: number }>('process-sale', {
+        items,
+        shift_id: shiftsStore.currentShift?.id ?? null,
+      })
+
+      lastSaleId.value = result.sale_id
+      clearCart()
+      return result.sale_id
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Sale failed'
+      throw err
+    } finally {
+      submitting.value = false
+    }
+  }
+
+  return {
+    cart,
+    products,
+    loading,
+    submitting,
+    error,
+    lastSaleId,
+    cartTotal,
+    cartItemCount,
+    isEmpty,
+    fetchProducts,
+    addToCart,
+    removeFromCart,
+    updateQty,
+    clearCart,
+    confirmSale,
+  }
+})
