@@ -130,10 +130,11 @@ coffeeInventory/
 │   │   ├── 008_staff_draft_deletion.sql ← staff can delete own draft order items
 │   │   ├── 009_add_payment_method.sql   ← payment_method on sales
 │   │   ├── 010_general_notifications.sql ← notifications improvements
-│   │   └── 011_receiver_view.sql        ← receiver role + completed_at on sales + RLS
+│   │   ├── 011_receiver_view.sql        ← receiver role + completed_at on sales + RLS
+│   │   └── 012_multi_role.sql           ← roles[] array column, GIN index, updated is_admin/is_receiver/trigger
 │   └── functions/
-│       ├── process-sale/index.ts    ← Edge Function: create sale + items
-│       └── finalize-order/index.ts  ← Edge Function: admin finalizes order
+│       ├── process-sale/index.ts    ← Edge Function (unused — logic moved to posStore directly)
+│       └── finalize-order/index.ts  ← Edge Function (unused — logic moved to ordersStore directly)
 │
 └── src/
     ├── main.ts                 ← createApp + Pinia + Router + mount
