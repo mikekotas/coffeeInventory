@@ -544,6 +544,10 @@ Added capability to assign POS sales to a specific table.
 - Modified POS cart UI (`SaleCart.vue`) to allow selecting Takeaway/Table and inputting table numbers.
 - Added UI badging indicating Takeaway vs Table on Staff History and Admin Sales pages.
 
+**A11 — Locked POS screen without active shift**
+- The POS product grid and cart FAB in `POS.vue` are now conditionally hidden via `shiftsStore.hasActiveShift`.
+- If no shift is active, an `AppEmptyState` is shown prompting the user to start a shift via the banner.
+
 ---
 
 ## 14. Common Development Tasks
