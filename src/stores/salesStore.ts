@@ -33,7 +33,7 @@ export const useSalesStore = defineStore('sales', () => {
         .from('sales')
         .select(`
           *,
-          profile:profiles(id, full_name, role),
+          profile:profiles(id, full_name, roles),
           shift:shifts(id, started_at, ended_at),
           sale_items(*, product:products(*))
         `)

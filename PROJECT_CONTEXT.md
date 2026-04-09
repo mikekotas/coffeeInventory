@@ -1,7 +1,7 @@
 # Coffee Inventory Pro — AI Agent Context File
 
 > Paste this file at the start of any AI session to get full project context.
-> Last updated: 2026-04-09 (rev 3)
+> Last updated: 2026-04-10 (rev 4)
 
 ---
 
@@ -9,10 +9,15 @@
 
 A **mobile-first PWA** for coffee shop POS and inventory management.
 
-**Three roles:**
-- **Admin** — Full dashboard: inventory CRUD, product/recipe management, sales analytics (charts), orders management, invoice tracking, staff management
+**Three roles (multi-role supported — one user can hold multiple roles simultaneously):**
+- **Admin** — Full dashboard: inventory CRUD, product/recipe management, sales analytics (charts), orders management, invoice tracking, staff management. Has quick "Switch View" links to Staff and Receiver views
 - **Staff** — POS quick-sale grid, inventory checklist with draft order button, shift management, personal sales history
 - **Receiver** — Real-time order queue (Kitchen Display System), mark orders complete, integrated POS with own shift tracking
+
+**Role selection UX:**
+- Single-role users land directly on their view after login
+- Multi-role non-admin users (e.g. staff + receiver) land on `/select-role` — a picker page to choose which view to enter
+- Multi-role users can switch views via a "Switch View" button in their layout header without logging out
 
 **Core business logic (all in DB):**
 - Selling a product automatically deducts its recipe ingredients from inventory (PostgreSQL trigger)
@@ -79,25 +84,23 @@ Run in **Supabase SQL Editor** in this exact order:
 10. `supabase/migrations/010_general_notifications.sql` — General notifications improvements
 11. `supabase/migrations/011_receiver_view.sql` — Adds `receiver` role, `completed_at` on sales, receiver RLS policies
     > **Note:** Run `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'receiver';` FIRST (alone), then run the rest of the file
+12. `supabase/migrations/012_multi_role.sql` — Multi-role support: replaces `profiles.role` with `profiles.roles user_role[]`, rewrites `is_admin()` / `is_receiver()` / `handle_new_user()` trigger, adds GIN index and not-empty constraint
 
 ### Auth setup
 - Go to Supabase Dashboard → Authentication → Enable **Email** provider
 - Create first admin user via Dashboard → Auth → Users → Add User
-- Promote to admin via SQL Editor:
+- Promote to admin via SQL Editor (uses array syntax after migration 012):
   ```sql
-  UPDATE profiles SET role = 'admin' WHERE id = '<user-uuid>';
+  UPDATE profiles SET roles = ARRAY['admin']::user_role[] WHERE id = '<user-uuid>';
   ```
-- Create receiver account (dedicated kiosk device) and promote:
+- Assign multiple roles to one user:
   ```sql
-  UPDATE profiles SET role = 'receiver' WHERE id = '<user-uuid>';
+  UPDATE profiles SET roles = ARRAY['staff','receiver']::user_role[] WHERE id = '<user-uuid>';
   ```
-- All subsequent users who sign up via the app get `role = 'staff'` automatically (via trigger)
+- All subsequent users created via the Admin Staff page get their chosen role(s) automatically
+- **User creation is done via the Admin UI** (Staff page → Add Staff Member) — no need to visit Supabase dashboard
 
-### Edge Functions (needed for POS sales and order finalization)
-```bash
-supabase functions deploy process-sale
-supabase functions deploy finalize-order
-```
+> **Note:** Edge Functions (`process-sale`, `finalize-order`) exist in `supabase/functions/` but are **not used** — both operations use direct Supabase client calls (see Fix A3).
 
 ---
 

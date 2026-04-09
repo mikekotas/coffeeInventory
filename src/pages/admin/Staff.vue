@@ -12,11 +12,13 @@ import AppSpinner from '@/components/ui/AppSpinner.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import AppInput from '@/components/ui/AppInput.vue'
-import { Users, UserPlus, Shield, User } from 'lucide-vue-next'
+import { Users, UserPlus } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 const toast = useToast()
 const { formatDateShort } = useFormatters()
+
+const ALL_ROLES: UserRole[] = ['admin', 'staff', 'receiver']
 
 const staff = ref<Profile[]>([])
 const loading = ref(false)
@@ -24,7 +26,9 @@ const showInviteModal = ref(false)
 const inviteEmail = ref('')
 const invitePassword = ref('')
 const inviteName = ref('')
+const inviteRoles = ref<UserRole[]>(['staff'])
 const inviting = ref(false)
+const savingRoles = ref<Record<string, boolean>>({})
 
 onMounted(async () => {
   loading.value = true
@@ -32,28 +36,35 @@ onMounted(async () => {
   loading.value = false
 })
 
-async function toggleRole(member: Profile) {
-  const newRole: UserRole = member.role === 'admin' ? 'staff' : 'admin'
+async function updateRoles(member: Profile, updatedRoles: UserRole[]) {
+  if (updatedRoles.length === 0) {
+    toast.error('At least one role required')
+    return
+  }
+  savingRoles.value[member.id] = true
   try {
-    await authStore.updateStaffRole(member.id, newRole)
+    await authStore.updateStaffRoles(member.id, updatedRoles)
     const idx = staff.value.findIndex(s => s.id === member.id)
-    if (idx !== -1) staff.value[idx].role = newRole
-    toast.success(`${member.full_name} is now ${newRole}`)
+    if (idx !== -1) staff.value[idx].roles = updatedRoles
+    toast.success(`${member.full_name}'s roles updated`)
   } catch {
-    toast.error('Failed to update role')
+    toast.error('Failed to update roles')
+  } finally {
+    delete savingRoles.value[member.id]
   }
 }
 
 async function handleInvite() {
   inviting.value = true
   try {
-    await authStore.register(inviteEmail.value, invitePassword.value, inviteName.value)
+    await authStore.register(inviteEmail.value, invitePassword.value, inviteName.value, inviteRoles.value)
     toast.success('Account created! User can now sign in.')
     staff.value = await authStore.fetchAllStaff()
     showInviteModal.value = false
     inviteEmail.value = ''
     invitePassword.value = ''
     inviteName.value = ''
+    inviteRoles.value = ['staff']
   } catch (err: unknown) {
     toast.error('Failed to create account', err instanceof Error ? err.message : '')
   } finally {
@@ -91,36 +102,78 @@ async function handleInvite() {
             </span>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <p class="text-sm font-medium text-white truncate">{{ member.full_name }}</p>
               <span v-if="member.id === authStore.profile?.id" class="text-xs text-slate-500">(you)</span>
+              <AppBadge
+                v-for="r in member.roles"
+                :key="r"
+                :variant="r === 'admin' ? 'amber' : r === 'receiver' ? 'blue' : 'gray'"
+                dot
+              >
+                {{ r }}
+              </AppBadge>
             </div>
             <p class="text-xs text-slate-500">Member since {{ formatDateShort(member.created_at) }}</p>
           </div>
-          <AppBadge :variant="member.role === 'admin' ? 'amber' : 'gray'" dot>
-            {{ member.role === 'admin' ? 'Admin' : 'Staff' }}
-          </AppBadge>
-          <button
-            v-if="member.id !== authStore.profile?.id"
-            class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-            :title="member.role === 'admin' ? 'Demote to staff' : 'Promote to admin'"
-            @click="toggleRole(member)"
+          <!-- Role checkboxes — disabled for the currently logged-in admin -->
+          <div
+            class="flex items-center gap-3"
+            :class="{ 'opacity-40 pointer-events-none': member.id === authStore.profile?.id }"
           >
-            <component :is="member.role === 'admin' ? User : Shield" class="w-4 h-4" />
-          </button>
+            <label
+              v-for="r in ALL_ROLES"
+              :key="r"
+              class="flex items-center gap-1.5 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                :checked="member.roles.includes(r)"
+                :disabled="!!savingRoles[member.id]"
+                class="rounded border-slate-600 bg-slate-700 text-brand-500 focus:ring-brand-500"
+                @change="updateRoles(member, member.roles.includes(r)
+                  ? member.roles.filter(x => x !== r)
+                  : [...member.roles, r]
+                )"
+              />
+              <span class="text-xs text-slate-400 capitalize">{{ r }}</span>
+            </label>
+            <AppSpinner v-if="savingRoles[member.id]" class="w-4 h-4" />
+          </div>
         </div>
       </div>
     </AppCard>
 
-    <!-- Invite Modal -->
+    <!-- Add Staff Modal -->
     <AppModal :open="showInviteModal" title="Add Staff Member" @close="showInviteModal = false">
       <form class="space-y-4" @submit.prevent="handleInvite">
         <AppInput v-model="inviteName" label="Full Name" placeholder="Jane Smith" required />
         <AppInput v-model="inviteEmail" type="email" label="Email" placeholder="jane@shop.com" required />
         <AppInput v-model="invitePassword" type="password" label="Password" placeholder="min. 6 characters" required />
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-slate-300">Roles</label>
+          <div class="flex gap-4">
+            <label
+              v-for="r in ALL_ROLES"
+              :key="r"
+              class="flex items-center gap-2 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                :value="r"
+                v-model="inviteRoles"
+                class="rounded border-slate-600 bg-slate-700 text-brand-500 focus:ring-brand-500"
+              />
+              <span class="text-sm text-slate-300 capitalize">{{ r }}</span>
+            </label>
+          </div>
+          <p class="text-xs text-slate-500">At least one role required</p>
+        </div>
         <div class="flex gap-2 pt-1">
           <AppButton variant="ghost" type="button" full-width @click="showInviteModal = false">Cancel</AppButton>
-          <AppButton type="submit" :loading="inviting" full-width>Create Account</AppButton>
+          <AppButton type="submit" :loading="inviting" :disabled="inviting || inviteRoles.length === 0" full-width>
+            Create Account
+          </AppButton>
         </div>
       </form>
     </AppModal>

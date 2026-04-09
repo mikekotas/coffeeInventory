@@ -13,6 +13,14 @@ const router = createRouter({
       meta: { layout: 'auth', requiresGuest: true },
     },
 
+    // ── Role selector (multi-role users) ──
+    {
+      path: '/select-role',
+      name: ROUTE_NAMES.SELECT_ROLE,
+      component: () => import('@/pages/RoleSelector.vue'),
+      meta: { requiresAuth: true },
+    },
+
     // ── Admin ──
     {
       path: '/admin',
@@ -154,10 +162,13 @@ router.beforeEach(async (to) => {
   const isAuthenticated = authStore.isAuthenticated
   const isAdmin = authStore.isAdmin
   const isReceiver = authStore.isReceiver
+  const isStaff = authStore.isStaff
 
   // Helper: redirect to the user's role-appropriate home
   const roleHome = () => {
     if (isAdmin) return { name: ROUTE_NAMES.ADMIN_DASHBOARD }
+    // Multi-role non-admin users (e.g. staff + receiver) go to the selector
+    if (isStaff && isReceiver) return { name: ROUTE_NAMES.SELECT_ROLE }
     if (isReceiver) return { name: ROUTE_NAMES.RECEIVER_QUEUE }
     return { name: ROUTE_NAMES.STAFF_POS }
   }

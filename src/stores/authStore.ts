@@ -9,10 +9,16 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null)
 
   const isAuthenticated = computed(() => profile.value !== null)
-  const isAdmin = computed(() => profile.value?.role === 'admin')
-  const isStaff = computed(() => profile.value?.role === 'staff')
-  const isReceiver = computed(() => profile.value?.role === 'receiver')
-  const role = computed<UserRole | null>(() => profile.value?.role ?? null)
+  const isAdmin    = computed(() => profile.value?.roles?.includes('admin') ?? false)
+  const isStaff    = computed(() => profile.value?.roles?.includes('staff') ?? false)
+  const isReceiver = computed(() => profile.value?.roles?.includes('receiver') ?? false)
+  // Primary role used for redirect priority: admin > receiver > staff
+  const role = computed<UserRole | null>(() => {
+    if (!profile.value?.roles?.length) return null
+    if (profile.value.roles.includes('admin')) return 'admin'
+    if (profile.value.roles.includes('receiver')) return 'receiver'
+    return 'staff'
+  })
 
   async function fetchProfile(userId: string) {
     const { data, error: err } = await supabase
@@ -66,7 +72,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(email: string, password: string, fullName: string) {
+  async function register(email: string, password: string, fullName: string, roles: UserRole[] = ['staff']) {
     loading.value = true
     error.value = null
     try {
@@ -74,10 +80,14 @@ export const useAuthStore = defineStore('auth', () => {
         email,
         password,
         options: {
-          data: { full_name: fullName, role: 'staff' },
+          data: { full_name: fullName, role: roles[0] }, // trigger reads this for initial INSERT
         },
       })
       if (err) throw err
+      // If multiple roles requested, update the profile after the trigger creates it
+      if (data.user && roles.length > 1) {
+        await supabase.from('profiles').update({ roles }).eq('id', data.user.id)
+      }
       return data
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Registration failed'
@@ -104,10 +114,10 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value = data
   }
 
-  async function updateStaffRole(userId: string, newRole: UserRole) {
+  async function updateStaffRoles(userId: string, newRoles: UserRole[]) {
     const { error: err } = await supabase
       .from('profiles')
-      .update({ role: newRole })
+      .update({ roles: newRoles })
       .eq('id', userId)
     if (err) throw err
   }
@@ -135,7 +145,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     updateProfile,
-    updateStaffRole,
+    updateStaffRoles,
     fetchAllStaff,
   }
 })

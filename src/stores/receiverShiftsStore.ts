@@ -22,13 +22,39 @@ export const useReceiverShiftsStore = defineStore('receiverShifts', () => {
   })
 
   async function initialize() {
+    const authStore = useAuthStore()
+
+    // Try localStorage first (same-device fast path)
     const savedShiftId = localStorage.getItem(LS_KEYS.receiverShiftId)
     if (savedShiftId) {
-      await fetchShiftById(savedShiftId)
+      try {
+        await fetchShiftById(savedShiftId)
+      } catch {
+        // Stale or invalid ID — clear and fall through to DB query
+        localStorage.removeItem(LS_KEYS.receiverShiftId)
+        currentShift.value = null
+      }
       if (currentShift.value && !currentShift.value.is_active) {
         currentShift.value = null
         localStorage.removeItem(LS_KEYS.receiverShiftId)
       }
+      if (currentShift.value?.is_active) return
+    }
+
+    // Fallback: query DB for an active shift — makes shifts cross-device
+    if (!authStore.profile) return
+    const { data } = await supabase
+      .from('shifts')
+      .select('*, profile:profiles(id, full_name)')
+      .eq('staff_id', authStore.profile.id)
+      .eq('is_active', true)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (data) {
+      currentShift.value = data as Shift
+      localStorage.setItem(LS_KEYS.receiverShiftId, data.id)
     }
   }
 

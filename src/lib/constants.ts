@@ -188,6 +188,7 @@ export const LS_KEYS = {
 // ============================================================
 export const ROUTE_NAMES = {
   LOGIN: 'login',
+  SELECT_ROLE: 'select-role',
   ADMIN_DASHBOARD: 'admin-dashboard',
   ADMIN_INVENTORY: 'admin-inventory',
   ADMIN_PRODUCTS: 'admin-products',

@@ -22,15 +22,40 @@ export const useShiftsStore = defineStore('shifts', () => {
   })
 
   async function initialize() {
-    // Restore shift from localStorage
+    const authStore = useAuthStore()
+
+    // Try localStorage first (same-device fast path)
     const savedShiftId = localStorage.getItem(LS_KEYS.currentShiftId)
     if (savedShiftId) {
-      await fetchShiftById(savedShiftId)
-      // If shift is no longer active, clear it
+      try {
+        await fetchShiftById(savedShiftId)
+      } catch {
+        // Stale or invalid ID — clear and fall through to DB query
+        localStorage.removeItem(LS_KEYS.currentShiftId)
+        currentShift.value = null
+      }
       if (currentShift.value && !currentShift.value.is_active) {
         currentShift.value = null
         localStorage.removeItem(LS_KEYS.currentShiftId)
       }
+      if (currentShift.value?.is_active) return
+    }
+
+    // Fallback: query DB for an active shift belonging to this user
+    // This makes shifts cross-device — if started on laptop, picked up on mobile
+    if (!authStore.profile) return
+    const { data } = await supabase
+      .from('shifts')
+      .select('*, profile:profiles(id, full_name)')
+      .eq('staff_id', authStore.profile.id)
+      .eq('is_active', true)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (data) {
+      currentShift.value = data as Shift
+      localStorage.setItem(LS_KEYS.currentShiftId, data.id)
     }
   }
 

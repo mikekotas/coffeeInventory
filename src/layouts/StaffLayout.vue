@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useShiftsStore } from '@/stores/shiftsStore'
 import StaffHeader from '@/components/staff/StaffHeader.vue'
 import StaffBottomNav from '@/components/staff/StaffBottomNav.vue'
 
 const route = useRoute()
+const shiftsStore = useShiftsStore()
 
 const pageTitles: Record<string, string> = {
   'staff-pos': 'Quick Sale',
@@ -13,6 +16,10 @@ const pageTitles: Record<string, string> = {
 }
 
 const title = () => pageTitles[route.name as string] ?? 'Coffee Inv'
+
+onMounted(async () => {
+  await shiftsStore.initialize()
+})
 </script>
 
 <template>

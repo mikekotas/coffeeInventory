@@ -22,7 +22,6 @@ const ending = ref(false)
 const shiftSales = ref<typeof salesStore.mySales>([])
 
 onMounted(async () => {
-  await shiftsStore.initialize()
   if (authStore.profile) {
     await salesStore.fetchMine(authStore.profile.id)
   }

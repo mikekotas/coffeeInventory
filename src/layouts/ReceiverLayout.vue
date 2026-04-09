@@ -5,7 +5,7 @@ import { useReceiverShiftsStore } from '@/stores/receiverShiftsStore'
 import { useReceiverStore } from '@/stores/receiverStore'
 import { useAuthStore } from '@/stores/authStore'
 import { ROUTE_NAMES } from '@/lib/constants'
-import { Monitor, ShoppingCart, Clock, LogOut } from 'lucide-vue-next'
+import { Monitor, ShoppingCart, Clock, LogOut, ArrowLeftRight } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -41,6 +41,10 @@ const navItems = [
   { name: ROUTE_NAMES.RECEIVER_POS, label: 'Sale', icon: ShoppingCart },
   { name: ROUTE_NAMES.RECEIVER_MY_SHIFT, label: 'Shift', icon: Clock },
 ]
+
+function switchView() {
+  router.push({ name: ROUTE_NAMES.SELECT_ROLE })
+}
 
 async function logout() {
   await authStore.logout()
@@ -83,6 +87,16 @@ async function logout() {
 
         <!-- Clock -->
         <span class="hidden sm:block text-xs font-mono text-slate-400 tabular-nums">{{ currentTime }}</span>
+
+        <!-- Switch view (only when user also has staff role) -->
+        <button
+          v-if="authStore.isStaff"
+          class="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
+          title="Switch view"
+          @click="switchView"
+        >
+          <ArrowLeftRight class="w-4 h-4" />
+        </button>
 
         <!-- Logout -->
         <button

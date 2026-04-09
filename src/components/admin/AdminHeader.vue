@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useToast } from '@/composables/useToast'
-import { Bell, LogOut, ChevronDown, Coffee, Menu } from 'lucide-vue-next'
+import { Bell, LogOut, ChevronDown, Coffee, Menu, ArrowLeftRight } from 'lucide-vue-next'
 import { ROUTE_NAMES } from '@/lib/constants'
 import NotificationList from '@/components/notifications/NotificationList.vue'
 
@@ -20,6 +20,14 @@ const router = useRouter()
 const toast = useToast()
 const showNotifications = ref(false)
 const showUserMenu = ref(false)
+
+// Admin can always switch to staff/receiver views (they have access to all routes)
+const switchViews = computed(() => {
+  const views = []
+  views.push({ label: 'Staff View', route: ROUTE_NAMES.STAFF_POS })
+  views.push({ label: 'Receiver View', route: ROUTE_NAMES.RECEIVER_QUEUE })
+  return views
+})
 
 async function logout() {
   await authStore.logout()
@@ -88,6 +96,16 @@ async function logout() {
               <p class="text-xs font-semibold text-white truncate">{{ authStore.profile?.full_name }}</p>
               <p class="text-xs text-slate-500">Admin</p>
             </div>
+            <button
+              v-for="v in switchViews"
+              :key="v.route"
+              class="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+              @click="router.push({ name: v.route }); showUserMenu = false"
+            >
+              <ArrowLeftRight class="w-4 h-4" />
+              {{ v.label }}
+            </button>
+            <div class="my-1 border-t border-slate-700" />
             <button
               class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-slate-700 transition-colors"
               @click="logout"

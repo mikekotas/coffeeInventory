@@ -18,7 +18,7 @@ export type NotificationSeverity = 'warning' | 'critical'
 export interface Profile {
   id: string
   full_name: string
-  role: UserRole
+  roles: UserRole[]
   avatar_url: string | null
   created_at: string
   updated_at: string

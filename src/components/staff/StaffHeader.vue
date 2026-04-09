@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useShiftsStore } from '@/stores/shiftsStore'
 import { useToast } from '@/composables/useToast'
-import { Coffee, LogOut, ChevronDown } from 'lucide-vue-next'
+import { Coffee, LogOut, ChevronDown, ArrowLeftRight } from 'lucide-vue-next'
 import { ROUTE_NAMES } from '@/lib/constants'
 
 interface Props {
@@ -17,6 +17,12 @@ const shiftsStore = useShiftsStore()
 const router = useRouter()
 const toast = useToast()
 const showMenu = ref(false)
+
+const hasMultipleViews = computed(() => authStore.isReceiver)
+
+function switchView() {
+  router.push({ name: ROUTE_NAMES.SELECT_ROLE })
+}
 
 async function logout() {
   await authStore.logout()
@@ -76,6 +82,14 @@ async function logout() {
               <p class="text-xs font-semibold text-white truncate">{{ authStore.profile?.full_name }}</p>
               <p class="text-xs text-slate-500">Staff</p>
             </div>
+            <button
+              v-if="hasMultipleViews"
+              class="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+              @click="switchView"
+            >
+              <ArrowLeftRight class="w-4 h-4" />
+              Switch View
+            </button>
             <button
               class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-slate-700 transition-colors"
               @click="logout"

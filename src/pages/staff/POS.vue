@@ -22,7 +22,6 @@ const selectedCategory = ref<ProductCategory | 'all'>('all')
 
 onMounted(async () => {
   await posStore.fetchProducts()
-  await shiftsStore.initialize()
 })
 
 const categoryTabs = computed(() => {
