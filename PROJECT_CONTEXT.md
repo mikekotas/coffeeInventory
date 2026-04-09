@@ -153,17 +153,17 @@ coffeeInventory/
     │   └── index.ts            ← All routes + beforeEach auth/role guard
     │
     ├── stores/
-    │   ├── authStore.ts        ← session, profile, role, login/logout/register, staff management
+    │   ├── authStore.ts        ← session, profile, roles[], login/logout/register(roles?), updateStaffRoles(), fetchAllStaff()
     │   ├── inventoryStore.ts   ← inventory CRUD + realtime subscription
     │   ├── productsStore.ts    ← product CRUD + recipe management
     │   ├── salesStore.ts       ← fetch sales, daily revenue RPC, top products RPC, subscribeRealtime()
     │   ├── ordersStore.ts      ← draft order flow, addItem, removeItem, finalizeOrder
     │   ├── notificationsStore.ts ← fetch alerts, markRead, realtime subscription
-    │   ├── shiftsStore.ts      ← start/end shift, localStorage persistence (key: coffee_inv_shift_id)
+    │   ├── shiftsStore.ts      ← start/end shift, cross-device persistence (localStorage + DB fallback)
     │   ├── posStore.ts         ← cart state, confirmSale (optional shiftIdOverride param)
     │   ├── invoicesStore.ts    ← invoice CRUD + Supabase Storage file upload
     │   ├── receiverStore.ts    ← pendingQueue, recentCompleted, markComplete, subscribeRealtime
-    │   └── receiverShiftsStore.ts ← copy of shiftsStore for receiver (key: coffee_inv_receiver_shift_id) + fetchAllActive()
+    │   └── receiverShiftsStore.ts ← same as shiftsStore for receiver (key: coffee_inv_receiver_shift_id) + fetchAllActive()
     │
     ├── composables/
     │   ├── useToast.ts         ← singleton toast system (success/error/warning/info)
@@ -177,16 +177,16 @@ coffeeInventory/
     ├── layouts/
     │   ├── AuthLayout.vue      ← centered card with ambient glow
     │   ├── AdminLayout.vue     ← AdminSidebar + AdminHeader + RouterView
-    │   ├── StaffLayout.vue     ← StaffHeader + RouterView + StaffBottomNav (pb-20)
-    │   └── ReceiverLayout.vue  ← ReceiverHeader + RouterView + bottom nav (Queue/POS/MyShift)
+    │   ├── StaffLayout.vue     ← StaffHeader + RouterView + StaffBottomNav (pb-20); calls shiftsStore.initialize() on mount
+    │   └── ReceiverLayout.vue  ← ReceiverHeader + RouterView + bottom nav (Queue/POS/MyShift); calls receiverShiftsStore.initialize() on mount
     │
     ├── components/
     │   ├── admin/
     │   │   ├── AdminSidebar.vue      ← 8 nav items, notification badge
-    │   │   └── AdminHeader.vue       ← notification bell, user dropdown, logout
+    │   │   └── AdminHeader.vue       ← notification bell, user dropdown, "Staff View"/"Receiver View" quick-switch links, logout
     │   ├── staff/
     │   │   ├── StaffBottomNav.vue    ← 4 tabs: POS/Checklist/MyShift/History
-    │   │   └── StaffHeader.vue       ← shift status pill (green pulse when active)
+    │   │   └── StaffHeader.vue       ← shift status pill, user menu with "Switch View" (shown when user also has receiver role)
     │   ├── ui/                       ← reusable component library
     │   │   ├── AppButton.vue         ← 5 variants, 4 sizes, loading spinner
     │   │   ├── AppCard.vue
@@ -229,6 +229,7 @@ coffeeInventory/
     └── pages/
         ├── auth/
         │   └── Login.vue
+        ├── RoleSelector.vue    ← role picker for multi-role non-admin users; shown after login and via "Switch View"
         ├── admin/
         │   ├── Dashboard.vue   ← KPI cards, RevenueChart, TopProductsChart, stock alerts
         │   ├── Inventory.vue   ← search + tabs (real_stuff/peripherals) + CRUD table
@@ -237,7 +238,7 @@ coffeeInventory/
         │   ├── Orders.vue      ← 3 tabs: Pending / To Be Delivered / Delivered; per-item delivery checkboxes update inventory
         │   ├── Invoices.vue    ← stats (total/monthly), invoice list with file link
         │   ├── Sales.vue       ← 3 tabs: overview/shifts/transactions + charts
-        │   └── Staff.vue       ← staff list, role toggle (admin↔staff), invite modal
+        │   └── Staff.vue       ← staff list with role checkboxes (admin/staff/receiver) per user, create user with role selection
         ├── staff/
         │   ├── POS.vue         ← category filter + product grid + cart FAB
         │   ├── Checklist.vue   ← two-tab (Real Stuff/Peripherals) + OrderDraftPanel
@@ -268,7 +269,7 @@ sale_type:             'takeaway' | 'table'
 
 ### Tables
 ```
-profiles          id(PK=auth.users.id), full_name, role, avatar_url, created_at, updated_at
+profiles          id(PK=auth.users.id), full_name, roles user_role[] (GIN-indexed, min 1), avatar_url, created_at, updated_at
 inventory         id, name, unit, stock_qty, warning_threshold, critical_threshold,
                   category, is_active, created_at, updated_at
 products          id, name, base_price, category, is_active, created_at, updated_at
@@ -298,7 +299,7 @@ invoices          id, admin_id(FK→profiles), amount, description, supplier,
 | `trg_inventory_updated_at` | inventory | BEFORE UPDATE | Sets updated_at = NOW() |
 | `trg_products_updated_at` | products | BEFORE UPDATE | Sets updated_at = NOW() |
 | `trg_invoices_updated_at` | invoices | BEFORE UPDATE | Sets updated_at = NOW() |
-| `trg_on_auth_user_created` | auth.users | AFTER INSERT | Creates profiles row with role='staff' |
+| `trg_on_auth_user_created` | auth.users | AFTER INSERT | Creates profiles row with `roles = ARRAY[initial_role]` (reads from user metadata, defaults to 'staff') |
 | `trg_deduct_stock_on_sale` | sale_items | AFTER INSERT | **Core logic** — see below |
 
 ### Core Trigger: `deduct_stock_on_sale()`
@@ -321,8 +322,8 @@ get_top_products(days_back INT, limit_n INT) → TABLE(product_name, category, t
 ## 7. RLS Policies
 
 All tables have RLS enabled. Helper functions:
-- `is_admin()` — checks `profiles.role = 'admin'` for `auth.uid()`
-- `is_authenticated()` — checks `auth.uid() IS NOT NULL` (SECURITY DEFINER)
+- `is_admin()` — checks `'admin' = ANY(profiles.roles)` for `auth.uid()` (updated in migration 012)
+- `is_receiver()` — checks `'receiver' = ANY(profiles.roles)` for `auth.uid()` (updated in migration 012)
 
 > **Note:** After running `003_fix_rls_policies.sql`, INSERT policies use `auth.uid() IS NOT NULL` directly (not the helper) to avoid SECURITY DEFINER context issues.
 
@@ -364,7 +365,8 @@ Located in `supabase/functions/`. Run on Deno runtime.
 
 ### `authStore`
 State: `user`, `profile`, `loading`
-Key actions: `initialize()` (sets up `onAuthStateChange`), `login()`, `register()`, `logout()`, `updateProfile()`, `updateStaffRole()`, `fetchAllStaff()`
+Computed: `isAdmin` / `isStaff` / `isReceiver` — use `profile.roles.includes(role)` (array check); `role` — returns primary role for redirect priority (admin > receiver > staff)
+Key actions: `initialize()` (sets up `onAuthStateChange`), `login()`, `register(email, password, fullName, roles?: UserRole[])` (creates user with chosen roles), `logout()`, `updateProfile()`, `updateStaffRoles(userId, newRoles: UserRole[])`, `fetchAllStaff()`
 
 ### `inventoryStore`
 State: `items`, `loading`
@@ -391,7 +393,8 @@ Key actions: `fetchAll()`, `markRead(id)`, `markAllRead()`, `subscribeRealtime()
 ### `shiftsStore`
 State: `currentShift`, `loading`
 Computed: `shiftDuration` (formatted HH:MM)
-Key actions: `initialize()` (restores from localStorage key `LS_KEYS.currentShiftId`), `startShift()`, `endShift()`
+Key actions: `initialize()` (two-step: localStorage fast path → DB fallback `WHERE staff_id = me AND is_active = TRUE` for cross-device persistence), `startShift()`, `endShift()`
+> `initialize()` is called in `StaffLayout.vue`'s `onMounted` (layout level, not child pages)
 
 ### `posStore`
 State: `cart` (array of `{ product, quantity }`), `loading`
@@ -409,7 +412,7 @@ Key actions: `fetchQueue()` (pending: completed_at IS NULL, ASC; recent: last 10
 
 ### `receiverShiftsStore`
 State: same shape as `shiftsStore`
-Key difference: uses `LS_KEYS.receiverShiftId` (`coffee_inv_receiver_shift_id`) to avoid collision
+Key difference: uses `LS_KEYS.receiverShiftId` (`coffee_inv_receiver_shift_id`) to avoid collision; same two-step `initialize()` with DB fallback for cross-device persistence
 Extra action: `fetchAllActive()` — returns all currently active shifts across all staff (used for the "who's on shift" strip in Queue.vue)
 
 ---
@@ -419,6 +422,7 @@ Extra action: `fetchAllActive()` — returns all currently active shifts across 
 ### Route structure
 ```
 /login                     → AuthLayout > Login.vue             (guest only)
+/select-role               → RoleSelector.vue                   (auth required, multi-role non-admin users)
 /admin/dashboard           → AdminLayout > Dashboard.vue        (admin only)
 /admin/inventory           → AdminLayout > Inventory.vue        (admin only)
 /admin/products            → AdminLayout > Products.vue         (admin only)
@@ -442,7 +446,7 @@ Extra action: `fetchAllActive()` — returns all currently active shifts across 
 3. Authenticated user trying to access `/login` → redirect to role-appropriate home
 4. Staff/receiver trying to access `/admin/*` → redirect to role-appropriate home
 5. Staff/admin trying to access `/receiver/*` → redirect to role-appropriate home
-6. Root `/` redirects: admin → `/admin/dashboard`, receiver → `/receiver/queue`, staff → `/staff/pos`
+6. `roleHome()` priority: admin → `/admin/dashboard`; staff+receiver (multi-role) → `/select-role`; receiver-only → `/receiver/queue`; staff-only → `/staff/pos`
 
 ---
 
@@ -498,11 +502,15 @@ useAdminRealtime()   // subscribes: inventory changes + new notifications
 useStaffRealtime()   // subscribes: order_items inserts
 ```
 
-### Shift persistence
+### Shift persistence (cross-device)
 ```typescript
-// shiftsStore.initialize() reads from:
-localStorage.getItem(LS_KEYS.currentShiftId) // = 'coffee_app_shift_id'
-// then fetches shift from DB to restore currentShift state
+// shiftsStore.initialize() — two-step lookup:
+// 1. localStorage fast path (same device):
+localStorage.getItem(LS_KEYS.currentShiftId) // 'coffee_inv_shift_id'
+// 2. DB fallback if localStorage empty (different device/browser):
+supabase.from('shifts').select('*').eq('staff_id', profile.id).eq('is_active', true)
+// If found via DB, also writes to localStorage for subsequent loads
+// Called in StaffLayout.vue onMounted (layout level) — receiverShiftsStore follows same pattern
 ```
 
 ---
@@ -616,6 +624,17 @@ Added capability to assign POS sales to a specific table.
 - Added policy allowing Staff to push items to the `notifications` table.
 - Implemented an interactive "Notify Admin" button to the Staff `OrderDraftPanel.vue`.
 - Updated `shiftsStore.ts` so `endShift()` automatically calculates total sales value and pushes a notification directly to the Admin.
+
+**A15 — Multi-role support + admin user management (migration 012)**
+- `profiles.role user_role` replaced with `profiles.roles user_role[]` (GIN-indexed array, min-1 constraint)
+- `is_admin()` and `is_receiver()` rewritten to use `'role' = ANY(roles)` — all downstream RLS policies inherit the change automatically
+- `handle_new_user()` trigger updated to insert `roles = ARRAY[initial_role]`
+- `authStore`: `isAdmin`/`isStaff`/`isReceiver` computed use `.includes()`; `role` returns primary role for redirect; `register()` accepts optional `roles?` param; `updateStaffRole` → `updateStaffRoles(userId, newRoles[])`
+- Admin Staff page: role checkboxes per user (saves on change), create user with role selection (no Supabase dashboard needed)
+- `src/pages/RoleSelector.vue`: picker page for multi-role non-admin users; `roleHome()` routes `isStaff && isReceiver` here
+- View switcher: Admin header has "Staff View"/"Receiver View" links; Staff/Receiver layouts show "Switch View" button for multi-role users
+- Cross-device shift persistence: both shift stores now do localStorage → DB fallback in `initialize()`; `shiftsStore.initialize()` moved to `StaffLayout.vue`
+- `salesStore`: fixed broken `role` → `roles` in profiles Supabase select query (was causing admin dashboard KPI widgets to show zero)
 
 ---
 
