@@ -7,7 +7,7 @@ import AppCard from '@/components/ui/AppCard.vue'
 import AppStatCard from '@/components/ui/AppStatCard.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
-import { TrendingUp, ShoppingBag } from 'lucide-vue-next'
+import { TrendingUp, ShoppingBag, Banknote, CreditCard } from 'lucide-vue-next'
 
 const salesStore = useSalesStore()
 const authStore = useAuthStore()
@@ -89,7 +89,11 @@ const totalRevenue = computed(() =>
                 {{ sale.sale_items?.map(si => si.product?.name).join(', ') || '—' }}
               </p>
             </div>
-            <p class="text-sm font-semibold text-white shrink-0">{{ formatCurrency(sale.total_amount) }}</p>
+            <div class="text-right flex items-center gap-1.5 shrink-0">
+              <Banknote v-if="sale.payment_method === 'cash'" class="w-4 h-4 text-emerald-400" />
+              <CreditCard v-else-if="sale.payment_method === 'card'" class="w-4 h-4 text-blue-400" />
+              <p class="text-sm font-semibold text-white">{{ formatCurrency(sale.total_amount) }}</p>
+            </div>
           </div>
         </div>
       </AppCard>

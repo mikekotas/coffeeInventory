@@ -14,6 +14,7 @@ export const usePosStore = defineStore('pos', () => {
   const lastSaleId = ref<string | null>(null)
   const saleType = ref<'takeaway' | 'table'>('takeaway')
   const tableIdentifier = ref<string>('')
+  const paymentMethod = ref<'cash' | 'card'>('cash')
 
   const cartTotal = computed(() =>
     cart.value.reduce((sum, item) => sum + item.product.base_price * item.qty, 0)
@@ -65,6 +66,7 @@ export const usePosStore = defineStore('pos', () => {
     cart.value = []
     saleType.value = 'takeaway'
     tableIdentifier.value = ''
+    paymentMethod.value = 'cash'
   }
 
   async function confirmSale(): Promise<string> {
@@ -89,6 +91,7 @@ export const usePosStore = defineStore('pos', () => {
           total_amount: totalAmount,
           sale_type: saleType.value,
           table_identifier: saleType.value === 'table' ? tableIdentifier.value : null,
+          payment_method: paymentMethod.value,
         })
         .select('id')
         .single()
@@ -123,6 +126,7 @@ export const usePosStore = defineStore('pos', () => {
     lastSaleId,
     saleType,
     tableIdentifier,
+    paymentMethod,
     cartTotal,
     cartItemCount,
     isEmpty,

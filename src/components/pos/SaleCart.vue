@@ -126,6 +126,26 @@ async function handleConfirm() {
           />
         </div>
 
+        <!-- Payment Method Selection -->
+        <div class="space-y-3 pb-2">
+          <div class="flex p-1 bg-slate-900 rounded-lg">
+            <button
+              class="flex-1 py-1.5 text-sm font-medium rounded-md transition-colors"
+              :class="posStore.paymentMethod === 'cash' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'"
+              @click="posStore.paymentMethod = 'cash'"
+            >
+              Cash
+            </button>
+            <button
+              class="flex-1 py-1.5 text-sm font-medium rounded-md transition-colors"
+              :class="posStore.paymentMethod === 'card' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'"
+              @click="posStore.paymentMethod = 'card'"
+            >
+              Card
+            </button>
+          </div>
+        </div>
+
         <div class="flex gap-2">
           <AppButton variant="ghost" @click="posStore.clearCart(); emit('close')">Clear</AppButton>
           <AppButton

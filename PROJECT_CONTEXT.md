@@ -552,6 +552,11 @@ Added capability to assign POS sales to a specific table.
 - Rewrote the realtime subscription logic in `ordersStore.ts` to actively refresh the Admin side when any `order_items` or `orders` see `UPDATE` or `DELETE` events.
 - Added `supabase/migrations/008_staff_draft_deletion.sql` granting the necessary RLS policies to let Staff delete draft order items and empty leftover draft orders.
 
+**A13 — Payment Method Support**
+- Added `payment_method` (`cash` or `card`) to the `sales` table (`009_add_payment_method.sql`).
+- Added toggle switches to `SaleCart.vue` to allow staff to designate payment method on checkout.
+- Display payment icons (Banknote/CreditCard) in both Staff `History.vue` and Admin `Sales.vue`.
+
 ---
 
 ## 14. Common Development Tasks

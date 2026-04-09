@@ -10,7 +10,7 @@ import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import RevenueChart from '@/components/charts/RevenueChart.vue'
 import SalesShiftChart from '@/components/charts/SalesShiftChart.vue'
 import TopProductsChart from '@/components/charts/TopProductsChart.vue'
-import { BarChart3, TrendingUp, ShoppingBag } from 'lucide-vue-next'
+import { BarChart3, TrendingUp, ShoppingBag, Banknote, CreditCard } from 'lucide-vue-next'
 
 const store = useSalesStore()
 const { formatCurrency, formatDate } = useFormatters()
@@ -109,8 +109,12 @@ const avgOrder = () => store.sales.length > 0 ? store.totalRevenue / store.sales
               <p class="text-xs text-slate-500">{{ formatDate(sale.created_at) }}</p>
             </div>
             <div class="text-right">
-              <p class="text-sm font-semibold text-white">{{ formatCurrency(sale.total_amount) }}</p>
-              <p class="text-xs text-slate-500">
+              <div class="flex items-center justify-end gap-1">
+                <Banknote v-if="sale.payment_method === 'cash'" class="w-3.5 h-3.5 text-emerald-400" />
+                <CreditCard v-else-if="sale.payment_method === 'card'" class="w-3.5 h-3.5 text-blue-400" />
+                <p class="text-sm font-semibold text-white">{{ formatCurrency(sale.total_amount) }}</p>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">
                 <span v-if="sale.sale_type === 'table'" class="text-brand-400 mr-1 font-medium">{{ sale.table_identifier }}</span>
                 <span v-else-if="sale.sale_type === 'takeaway'" class="text-blue-400 mr-1 font-medium">Takeaway</span>
                 {{ sale.sale_items?.length ?? 0 }} items

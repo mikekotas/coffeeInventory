@@ -77,6 +77,7 @@ export interface Sale {
   total_amount: number
   sale_type?: 'takeaway' | 'table'
   table_identifier?: string | null
+  payment_method?: 'cash' | 'card'
   created_at: string
   // Joined fields
   profile?: Profile
