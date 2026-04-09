@@ -6,7 +6,7 @@ export type UserRole = 'admin' | 'staff'
 export type InventoryCategory = 'real_stuff' | 'peripherals'
 export type InventoryUnit = 'ml' | 'g' | 'units' | 'kg' | 'L' | 'cl'
 export type ProductCategory = 'coffee' | 'alcohol' | 'soft_drink' | 'beer' | 'food' | 'other'
-export type OrderStatus = 'draft' | 'finalized'
+export type OrderStatus = 'draft' | 'finalized' | 'delivered'
 export type OrderSource = 'manual' | 'auto_threshold'
 export type NotificationStatus = 'unread' | 'read'
 export type NotificationSeverity = 'warning' | 'critical'
@@ -97,6 +97,7 @@ export interface Order {
   id: string
   created_by: string
   status: OrderStatus
+  name: string | null
   notes: string | null
   created_at: string
   finalized_at: string | null
@@ -113,6 +114,8 @@ export interface OrderItem {
   quantity_requested: number
   source: OrderSource
   notes: string | null
+  received: boolean
+  received_at: string | null
   created_at: string
   // Joined fields
   inventory?: InventoryItem

@@ -504,12 +504,22 @@ Removed dependency on `process-sale` and `finalize-order` edge functions. Both o
 `updateItemQty()` and `removeItem()` in `ordersStore` only updated `draftOrder` state but not the `orders` list (which Orders.vue iterates). Fixed: both functions now sync changes to both `draftOrder` and `orders`.
 
 **A6 — Realtime subscriptions never initialized**
-`useAdminRealtime()` and `useStaffRealtime()` existed but were never called. Added to `AdminLayout.vue` and `StaffLayout.vue` respectively.
+`useAdminRealtime()` and `useStaffRealtime()` existed but were never called. Added `useAdminRealtime()` to `AdminLayout.vue`.
 - **Admin realtime covers:** inventory changes, new notifications, order_items inserts
-- **Staff realtime covers:** inventory changes (stock levels update live after sales)
+- **Staff realtime:** `useStaffRealtime()` is called directly inside each staff page that needs it (e.g. `POS.vue`). Do NOT call it from `StaffLayout.vue` — see A8.
 
 **A7 — Admin sidebar hidden on mobile**
 `AdminSidebar` had `hidden lg:flex` with no mobile toggle. Added hamburger button (`Menu` icon) in `AdminHeader` (mobile only, `lg:hidden`). Sidebar now overlays as a drawer on mobile with a backdrop. Tapping a nav item or the backdrop closes it.
+
+**A8 — Staff POS blank on mobile / dev server (duplicate realtime channel)**
+`POS.vue` already called `useStaffRealtime()` internally. We mistakenly also added it to `StaffLayout.vue`, creating two subscriptions to the same Supabase Realtime topic `realtime:inventory-changes` over the same socket. Phoenix (Supabase Realtime) rejects duplicate topic joins on a single connection; this corrupted the shared realtime socket (Supabase JS v2 multiplexes auth refresh and realtime over one socket), causing the POS page to silently fail to load data.
+**Fix:** Removed `useStaffRealtime()` from `StaffLayout.vue`. It stays in `POS.vue` only.
+**Rule:** Never add a realtime subscription to a layout if any child page already subscribes to the same channel. Realtime composables belong in the leaf page component that actually uses the data.
+
+**A9 — Dev server not accessible from mobile / other devices on local network**
+Vite default config binds only to `127.0.0.1` (localhost). Accessing the dev server via the machine's LAN IP (e.g. `192.168.1.x:5173`) from a mobile device caused JS module requests to fail silently — the initial HTML loads but all `<script type="module">` fetches return connection errors, leaving the page blank.
+**Fix:** Added `server: { host: true }` to `vite.config.ts`. This binds Vite to `0.0.0.0` (all interfaces), making the dev server accessible from any device on the same network.
+**Note:** Requires restarting the dev server after the config change.
 
 ---
 
