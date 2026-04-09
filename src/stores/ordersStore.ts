@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore, acceptHMRUpdate } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './authStore'
@@ -199,3 +199,7 @@ export const useOrdersStore = defineStore('orders', () => {
     subscribeRealtime,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useOrdersStore, import.meta.hot))
+}

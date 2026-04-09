@@ -4,6 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
+  server: {
+    host: true,
+  },
   plugins: [
     vue(),
     VitePWA({
@@ -37,6 +40,9 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
+      },
+      devOptions: {
+        enabled: false,
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],

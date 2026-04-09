@@ -2,10 +2,8 @@
 import { useRoute } from 'vue-router'
 import StaffHeader from '@/components/staff/StaffHeader.vue'
 import StaffBottomNav from '@/components/staff/StaffBottomNav.vue'
-import { useStaffRealtime } from '@/composables/useRealtime'
 
 const route = useRoute()
-useStaffRealtime()
 
 const pageTitles: Record<string, string> = {
   'staff-pos': 'Quick Sale',

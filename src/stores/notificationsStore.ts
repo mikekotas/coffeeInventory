@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore, acceptHMRUpdate } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import type { Notification } from '@/types'
@@ -75,3 +75,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     subscribeRealtime,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useNotificationsStore, import.meta.hot))
+}

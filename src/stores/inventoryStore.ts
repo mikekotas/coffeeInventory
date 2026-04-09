@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore, acceptHMRUpdate } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import type { InventoryItem, InventoryItemForm, InventoryCategory } from '@/types'
@@ -138,3 +138,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     subscribeRealtime,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useInventoryStore, import.meta.hot))
+}

@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore, acceptHMRUpdate } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
 import type { Product, Recipe, ProductForm, RecipeForm } from '@/types'
@@ -112,3 +112,7 @@ export const useProductsStore = defineStore('products', () => {
     removeRecipe,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useProductsStore, import.meta.hot))
+}
