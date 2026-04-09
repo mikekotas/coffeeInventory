@@ -548,6 +548,10 @@ Added capability to assign POS sales to a specific table.
 - The POS product grid and cart FAB in `POS.vue` are now conditionally hidden via `shiftsStore.hasActiveShift`.
 - If no shift is active, an `AppEmptyState` is shown prompting the user to start a shift via the banner.
 
+**A12 — Fixed Order Item realtime sync & Staff delete permissions**
+- Rewrote the realtime subscription logic in `ordersStore.ts` to actively refresh the Admin side when any `order_items` or `orders` see `UPDATE` or `DELETE` events.
+- Added `supabase/migrations/008_staff_draft_deletion.sql` granting the necessary RLS policies to let Staff delete draft order items and empty leftover draft orders.
+
 ---
 
 ## 14. Common Development Tasks

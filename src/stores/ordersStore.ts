@@ -254,8 +254,13 @@ export const useOrdersStore = defineStore('orders', () => {
   function subscribeRealtime() {
     const channel = supabase
       .channel('orders-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_items' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
         fetchDraftOrder()
+        fetchAll()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchDraftOrder()
+        fetchAll()
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
