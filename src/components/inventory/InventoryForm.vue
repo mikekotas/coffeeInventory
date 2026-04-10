@@ -51,7 +51,7 @@ function onSubmit() {
 <template>
   <form class="space-y-4" @submit.prevent="onSubmit">
     <AppInput v-model="form.name" :label="t('inventory.itemName')" :placeholder="t('inventory.itemNamePlaceholder')" required />
-    <AppInput :model-value="form.name_el ?? ''" @update:model-value="form.name_el = $event" :label="t('inventory.greekName')" :placeholder="t('inventory.greekNamePlaceholder')" />
+    <AppInput :model-value="form.name_el ?? ''" @update:model-value="form.name_el = ($event as string)" :label="t('inventory.greekName')" :placeholder="t('inventory.greekNamePlaceholder')" />
 
     <div class="grid grid-cols-2 gap-3">
       <AppSelect

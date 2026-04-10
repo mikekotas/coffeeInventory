@@ -8,7 +8,7 @@ import { Bell, LogOut, ChevronDown, Coffee, Menu, ArrowLeftRight } from 'lucide-
 import { ROUTE_NAMES } from '@/lib/constants'
 import NotificationList from '@/components/notifications/NotificationList.vue'
 import { useI18n } from 'vue-i18n'
-import { setLocale, type Locale } from '@/i18n'
+import { setLocale, } from '@/i18n'
 
 interface Props {
   title?: string

@@ -1,5 +1,4 @@
 import { createI18n } from 'vue-i18n'
-import { LS_KEYS } from '@/lib/constants'
 import en from './locales/en.json'
 import el from './locales/el.json'
 
@@ -21,7 +20,7 @@ export const i18n = createI18n({
 })
 
 export function setLocale(locale: Locale) {
-  ;(i18n.global.locale as any).value = locale
+  ; (i18n.global.locale as any).value = locale
   localStorage.setItem(LS_LOCALE_KEY, locale)
   document.documentElement.lang = locale
 }

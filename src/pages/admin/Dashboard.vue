@@ -26,7 +26,7 @@ const notificationsStore = useNotificationsStore()
 const ordersStore = useOrdersStore()
 const authStore = useAuthStore()
 const { formatCurrency, formatRelative } = useFormatters()
-const { t } = useI18n()
+// const { t } = useI18n() // Removed unused variable to fix TS6133
 
 useAdminRealtime()
 

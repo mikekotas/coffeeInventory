@@ -155,7 +155,7 @@ const activeProducts = () => store.products.filter(p => p.is_active)
     <AppModal :open="showProductModal" :title="editProduct ? $t('products.editProduct') : $t('products.addProduct')" @close="showProductModal = false">
       <form class="space-y-4" @submit.prevent="handleSubmit">
         <AppInput v-model="form.name" :label="$t('products.productName')" :placeholder="$t('products.productNamePlaceholder')" required />
-        <AppInput :model-value="form.name_el ?? ''" @update:model-value="form.name_el = $event" :label="$t('products.greekName')" :placeholder="$t('products.greekNamePlaceholder')" />
+        <AppInput :model-value="form.name_el ?? ''" @update:model-value="form.name_el = ($event as string)" :label="$t('products.greekName')" :placeholder="$t('products.greekNamePlaceholder')" />
         <div class="grid grid-cols-2 gap-3">
           <AppInput v-model="form.base_price" type="number" :label="$t('products.price')" prefix="€" required />
           <AppSelect v-model="form.category" :options="categoryOptions" :label="$t('products.category')" required />
