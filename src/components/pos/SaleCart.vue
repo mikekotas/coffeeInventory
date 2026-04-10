@@ -29,6 +29,7 @@ const confirming = ref(false)
 const canConfirm = computed(() => {
   if (posStore.isEmpty) return false
   if (posStore.saleType === 'table' && !posStore.tableIdentifier.trim()) return false
+  if (posStore.paymentMethod === 'credit' && !posStore.tableIdentifier.trim()) return false
   return true
 })
 
@@ -126,9 +127,9 @@ async function handleConfirm() {
           </div>
           
           <AppInput
-            v-if="posStore.saleType === 'table'"
+            v-if="posStore.saleType === 'table' || posStore.paymentMethod === 'credit'"
             v-model="posStore.tableIdentifier"
-            :placeholder="t('pos.tableNumber')"
+            :placeholder="posStore.paymentMethod === 'credit' ? t('pos.tabLabel') : t('pos.tableNumber')"
           />
         </div>
 
@@ -148,6 +149,13 @@ async function handleConfirm() {
               @click="posStore.paymentMethod = 'card'"
             >
               {{ t('pos.card') }}
+            </button>
+            <button
+              class="flex-1 py-1.5 text-sm font-medium rounded-md transition-colors"
+              :class="posStore.paymentMethod === 'credit' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'"
+              @click="posStore.paymentMethod = 'credit'"
+            >
+              {{ t('pos.credit') }}
             </button>
           </div>
         </div>

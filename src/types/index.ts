@@ -20,6 +20,7 @@ export interface Profile {
   full_name: string
   roles: UserRole[]
   avatar_url: string | null
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -79,13 +80,15 @@ export interface Sale {
   total_amount: number
   sale_type?: 'takeaway' | 'table'
   table_identifier?: string | null
-  payment_method?: 'cash' | 'card'
+  payment_method?: 'cash' | 'card' | 'credit'
+  credit_tab_id?: string | null
   created_at: string
   completed_at: string | null
   // Joined fields
   profile?: Profile
   shift?: Shift
   sale_items?: SaleItem[]
+  credit_tab?: CreditTab
 }
 
 export interface SaleItem {
@@ -97,6 +100,24 @@ export interface SaleItem {
   created_at: string
   // Joined fields
   product?: Product
+}
+
+export type CreditTabStatus = 'open' | 'paid'
+
+export interface CreditTab {
+  id: string
+  staff_id: string
+  label: string
+  sale_type: 'takeaway' | 'table'
+  status: CreditTabStatus
+  opened_at: string
+  paid_at: string | null
+  paid_by: string | null
+  created_at: string
+  // Joined fields
+  opener?: Profile
+  payer?: Profile
+  sales?: Sale[]
 }
 
 export interface Order {
@@ -268,9 +289,14 @@ export interface Database {
         Insert: Omit<Shift, 'id' | 'created_at' | 'profile'>
         Update: Partial<Omit<Shift, 'id' | 'created_at'>>
       }
+      credit_tabs: {
+        Row: CreditTab
+        Insert: Omit<CreditTab, 'id' | 'created_at' | 'opener' | 'payer' | 'sales'>
+        Update: Partial<Omit<CreditTab, 'id' | 'created_at'>>
+      }
       sales: {
         Row: Sale
-        Insert: Omit<Sale, 'id' | 'created_at' | 'profile' | 'shift' | 'sale_items'>
+        Insert: Omit<Sale, 'id' | 'created_at' | 'profile' | 'shift' | 'sale_items' | 'credit_tab'>
         Update: Partial<Omit<Sale, 'id' | 'created_at'>>
       }
       sale_items: {

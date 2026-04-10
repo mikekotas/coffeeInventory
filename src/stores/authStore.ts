@@ -1,6 +1,7 @@
 import { defineStore, acceptHMRUpdate } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { i18n } from '@/i18n'
 import type { Profile, UserRole } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -37,6 +38,10 @@ export const useAuthStore = defineStore('auth', () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         await fetchProfile(session.user.id)
+        if (profile.value?.is_active === false) {
+          await supabase.auth.signOut()
+          profile.value = null
+        }
       }
     } catch (err) {
       console.error('Auth init error:', err)
@@ -62,6 +67,11 @@ export const useAuthStore = defineStore('auth', () => {
       if (err) throw err
       if (data.user) {
         await fetchProfile(data.user.id)
+        if (profile.value?.is_active === false) {
+          await supabase.auth.signOut()
+          profile.value = null
+          throw new Error(i18n.global.t('auth.accountDeactivated'))
+        }
       }
       return data
     } catch (err: unknown) {
@@ -122,6 +132,22 @@ export const useAuthStore = defineStore('auth', () => {
     if (err) throw err
   }
 
+  async function deactivateStaff(userId: string): Promise<void> {
+    const { error: err } = await supabase
+      .from('profiles')
+      .update({ is_active: false })
+      .eq('id', userId)
+    if (err) throw err
+  }
+
+  async function reactivateStaff(userId: string): Promise<void> {
+    const { error: err } = await supabase
+      .from('profiles')
+      .update({ is_active: true })
+      .eq('id', userId)
+    if (err) throw err
+  }
+
   async function fetchAllStaff(): Promise<Profile[]> {
     const { data, error: err } = await supabase
       .from('profiles')
@@ -146,6 +172,8 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     updateProfile,
     updateStaffRoles,
+    deactivateStaff,
+    reactivateStaff,
     fetchAllStaff,
   }
 })

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './authStore'
 import { useShiftsStore } from './shiftsStore'
+import { useCreditTabsStore } from './creditTabsStore'
 import type { Product, CartItem } from '@/types'
 
 export const usePosStore = defineStore('pos', () => {
@@ -14,7 +15,7 @@ export const usePosStore = defineStore('pos', () => {
   const lastSaleId = ref<string | null>(null)
   const saleType = ref<'takeaway' | 'table'>('takeaway')
   const tableIdentifier = ref<string>('')
-  const paymentMethod = ref<'cash' | 'card'>('cash')
+  const paymentMethod = ref<'cash' | 'card' | 'credit'>('cash')
 
   const cartTotal = computed(() =>
     cart.value.reduce((sum, item) => sum + item.product.base_price * item.qty, 0)
@@ -86,6 +87,15 @@ export const usePosStore = defineStore('pos', () => {
         ? shiftIdOverride
         : (shiftsStore.currentShift?.id ?? null)
 
+      let creditTabId: string | null = null
+      if (paymentMethod.value === 'credit') {
+        const label = tableIdentifier.value.trim()
+        if (!label) throw new Error('Tab label is required for credit sales')
+        const creditTabsStore = useCreditTabsStore()
+        const tab = await creditTabsStore.findOrCreateTab(label, saleType.value)
+        creditTabId = tab.id
+      }
+
       const { data: sale, error: saleErr } = await supabase
         .from('sales')
         .insert({
@@ -93,8 +103,11 @@ export const usePosStore = defineStore('pos', () => {
           shift_id: resolvedShiftId,
           total_amount: totalAmount,
           sale_type: saleType.value,
-          table_identifier: saleType.value === 'table' ? tableIdentifier.value : null,
+          table_identifier: saleType.value === 'table' || paymentMethod.value === 'credit'
+            ? tableIdentifier.value
+            : null,
           payment_method: paymentMethod.value,
+          credit_tab_id: creditTabId,
         })
         .select('id')
         .single()

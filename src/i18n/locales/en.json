@@ -16,6 +16,7 @@
     "status": "Status",
     "active": "Active",
     "inactive": "Inactive",
+    "confirm": "Confirm",
     "done": "Done",
     "close": "Close",
     "clear": "Clear",
@@ -30,7 +31,8 @@
     "password": "Password",
     "passwordPlaceholder": "••••••••",
     "signInBtn": "Sign In",
-    "noAccount": "Contact your administrator to create an account."
+    "noAccount": "Contact your administrator to create an account.",
+    "accountDeactivated": "Your account has been deactivated. Please contact an administrator."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -272,7 +274,20 @@
     "createFailed": "Failed to create account",
     "rolesUpdated": "{name}'s roles updated",
     "roleUpdateFailed": "Failed to update roles",
-    "atLeastOneRoleError": "At least one role required"
+    "atLeastOneRoleError": "At least one role required",
+    "tabActive": "Active",
+    "tabDeactivated": "Deactivated",
+    "noDeactivated": "No deactivated members",
+    "noDeactivatedDesc": "Deactivated accounts will appear here",
+    "deactivateTitle": "Deactivate Account",
+    "deactivateMsg": "Deactivate {name}? They will no longer be able to sign in.",
+    "deactivateBtn": "Deactivate",
+    "deactivated": "{name} has been deactivated",
+    "deactivateFailed": "Failed to deactivate account",
+    "cannotDeactivateOnlyAdmin": "Cannot deactivate the only admin account",
+    "reactivateBtn": "Reactivate",
+    "reactivated": "{name} has been reactivated",
+    "reactivateFailed": "Failed to reactivate account"
   },
   "pos": {
     "shiftRequired": "Shift Required",
@@ -287,12 +302,28 @@
     "tableNumber": "Table number or name...",
     "cash": "Cash",
     "card": "Card",
+    "credit": "Tab",
+    "tabLabel": "Tab name (e.g. A4)...",
+    "viewSale": "Sale",
+    "viewTabs": "Open Tabs",
     "clear": "Clear",
     "confirmSale": "Confirm Sale",
     "saleRecorded": "Sale recorded!",
     "saleFailed": "Sale failed",
     "saleTryAgain": "Please try again",
     "each": "each"
+  },
+  "creditTabs": {
+    "openTabs": "Open Tabs",
+    "noTabs": "No open tabs",
+    "noTabsDesc": "Credit sales will appear here as open tabs",
+    "saleCount": "{count} sale(s)",
+    "openedAt": "opened {time}",
+    "markPaidTitle": "Mark Tab as Paid",
+    "markPaidMsg": "Mark tab \"{label}\" as paid? Total: {amount}",
+    "markPaidBtn": "Mark as Paid",
+    "markedPaid": "Tab \"{label}\" marked as paid",
+    "markPaidFailed": "Failed to mark tab as paid"
   },
   "shift": {
     "shiftActive": "Shift Active",

@@ -2,19 +2,23 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePosStore } from '@/stores/posStore'
 import { useShiftsStore } from '@/stores/shiftsStore'
+import { useCreditTabsStore } from '@/stores/creditTabsStore'
 import { useStaffRealtime } from '@/composables/useRealtime'
 import { useI18n } from 'vue-i18n'
 import type { ProductCategory } from '@/types'
 import { useFormatters } from '@/composables/useFormatters'
 import ProductButton from '@/components/pos/ProductButton.vue'
 import SaleCart from '@/components/pos/SaleCart.vue'
+import CreditTabsList from '@/components/pos/CreditTabsList.vue'
 import ShiftBanner from '@/components/pos/ShiftBanner.vue'
+import AppTabs from '@/components/ui/AppTabs.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import { ShoppingCart } from 'lucide-vue-next'
 
 const posStore = usePosStore()
 const shiftsStore = useShiftsStore()
+const creditTabsStore = useCreditTabsStore()
 const { t } = useI18n()
 const { formatCurrency } = useFormatters()
 
@@ -22,10 +26,16 @@ useStaffRealtime()
 
 const showCart = ref(false)
 const selectedCategory = ref<ProductCategory | 'all'>('all')
+const posView = ref<'sale' | 'tabs'>('sale')
 
 onMounted(async () => {
   await posStore.fetchProducts()
 })
+
+const viewTabs = computed(() => [
+  { key: 'sale', label: t('pos.viewSale') },
+  { key: 'tabs', label: t('pos.viewTabs'), count: creditTabsStore.openTabCount },
+])
 
 const categoryTabs = computed(() => {
   const cats = [...new Set(posStore.products.map(p => p.category))]
@@ -51,38 +61,53 @@ const cartQty = (productId: string) => {
     <ShiftBanner />
 
     <template v-if="shiftsStore.hasActiveShift">
-      <!-- Category filter -->
-      <div class="px-4 mt-4 overflow-x-auto">
-        <div class="flex gap-1 min-w-max">
-          <button
-            v-for="tab in categoryTabs"
-            :key="tab.key"
-            :class="[
-              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap',
-              selectedCategory === tab.key
-                ? 'bg-brand-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700',
-            ]"
-            @click="selectedCategory = tab.key as ProductCategory | 'all'"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
+      <!-- View switcher: Sale / Open Tabs -->
+      <div class="px-4 mt-4">
+        <AppTabs
+          :tabs="viewTabs"
+          :model-value="posView"
+          @update:model-value="posView = $event as 'sale' | 'tabs'"
+        />
       </div>
 
-      <!-- Products Grid -->
-      <div class="px-4 mt-3">
-        <AppSpinner v-if="posStore.loading" center />
-        <div v-else class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
-          <ProductButton
-            v-for="product in filteredProducts"
-            :key="product.id"
-            :product="product"
-            :cart-qty="cartQty(product.id)"
-            @tap="posStore.addToCart($event)"
-          />
+      <!-- Sale view -->
+      <template v-if="posView === 'sale'">
+        <!-- Category filter -->
+        <div class="px-4 mt-4 overflow-x-auto">
+          <div class="flex gap-1 min-w-max">
+            <button
+              v-for="tab in categoryTabs"
+              :key="tab.key"
+              :class="[
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap',
+                selectedCategory === tab.key
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700',
+              ]"
+              @click="selectedCategory = tab.key as ProductCategory | 'all'"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
         </div>
-      </div>
+
+        <!-- Products Grid -->
+        <div class="px-4 mt-3">
+          <AppSpinner v-if="posStore.loading" center />
+          <div v-else class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+            <ProductButton
+              v-for="product in filteredProducts"
+              :key="product.id"
+              :product="product"
+              :cart-qty="cartQty(product.id)"
+              @tap="posStore.addToCart($event)"
+            />
+          </div>
+        </div>
+      </template>
+
+      <!-- Open Tabs view -->
+      <CreditTabsList v-else />
 
       <!-- Cart FAB -->
       <button
