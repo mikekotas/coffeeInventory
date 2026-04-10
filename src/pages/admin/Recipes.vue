@@ -1,3 +1,4 @@
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useProductsStore } from '@/stores/productsStore'
 import { useInventoryStore } from '@/stores/inventoryStore'
@@ -9,7 +10,6 @@ import AppBadge from '@/components/ui/AppBadge.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import RecipeBuilder from '@/components/recipes/RecipeBuilder.vue'
-import { PRODUCT_CATEGORIES } from '@/lib/constants'
 import type { Product } from '@/types'
 import { BookOpen } from 'lucide-vue-next'
 
