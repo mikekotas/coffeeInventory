@@ -9,8 +9,8 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null)
 
   const isAuthenticated = computed(() => profile.value !== null)
-  const isAdmin    = computed(() => profile.value?.roles?.includes('admin') ?? false)
-  const isStaff    = computed(() => profile.value?.roles?.includes('staff') ?? false)
+  const isAdmin = computed(() => profile.value?.roles?.includes('admin') ?? false)
+  const isStaff = computed(() => profile.value?.roles?.includes('staff') ?? false)
   const isReceiver = computed(() => profile.value?.roles?.includes('receiver') ?? false)
   // Primary role used for redirect priority: admin > receiver > staff
   const role = computed<UserRole | null>(() => {

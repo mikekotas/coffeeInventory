@@ -7,7 +7,6 @@ import { useOrdersStore } from '@/stores/ordersStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAdminRealtime } from '@/composables/useRealtime'
 import { useFormatters } from '@/composables/useFormatters'
-import { useI18n } from 'vue-i18n'
 import AppStatCard from '@/components/ui/AppStatCard.vue'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
@@ -26,7 +25,6 @@ const notificationsStore = useNotificationsStore()
 const ordersStore = useOrdersStore()
 const authStore = useAuthStore()
 const { formatCurrency, formatRelative } = useFormatters()
-// const { t } = useI18n() // Removed unused variable to fix TS6133
 
 useAdminRealtime()
 
