@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useFormatters } from '@/composables/useFormatters'
+import { useI18n } from 'vue-i18n'
+import { useProductName } from '@/composables/useProductName'
 import AppButton from '@/components/ui/AppButton.vue'
 import { Banknote, CreditCard, MapPin, ShoppingBag, CheckCircle } from 'lucide-vue-next'
 import type { Sale } from '@/types'
+
+const { t } = useI18n()
+const { getName } = useProductName()
 
 const props = defineProps<{
   sale: Sale
@@ -47,13 +52,13 @@ const saleNumber = computed(() => props.sale.id.slice(-6).toUpperCase())
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-700 text-slate-400"
         >
           <ShoppingBag class="w-2.5 h-2.5" />
-          Takeaway
+          {{ t('queue.takeaway') }}
         </span>
       </div>
 
       <div class="flex items-center gap-2">
         <!-- Payment method icon -->
-        <span class="text-slate-500" :title="sale.payment_method === 'card' ? 'Card' : 'Cash'">
+        <span class="text-slate-500" :title="sale.payment_method === 'card' ? t('pos.card') : t('pos.cash')">
           <CreditCard v-if="sale.payment_method === 'card'" class="w-3.5 h-3.5 text-blue-400" />
           <Banknote v-else class="w-3.5 h-3.5 text-emerald-400" />
         </span>
@@ -73,7 +78,7 @@ const saleNumber = computed(() => props.sale.id.slice(-6).toUpperCase())
       >
         <span class="text-sm text-white">
           <span class="font-semibold text-amber-400">{{ item.qty_sold }}×</span>
-          {{ item.product?.name ?? 'Unknown' }}
+          {{ item.product ? getName(item.product) : t('queue.unknown') }}
         </span>
         <span class="text-xs text-slate-400">{{ formatCurrency(item.unit_price * item.qty_sold) }}</span>
       </div>
@@ -94,13 +99,13 @@ const saleNumber = computed(() => props.sale.id.slice(-6).toUpperCase())
         :loading="completing"
         @click="emit('complete', sale.id)"
       >
-        Done
+        {{ t('common.done') }}
       </AppButton>
 
       <!-- Completed indicator -->
       <div v-else class="flex items-center gap-1 text-emerald-400">
         <CheckCircle class="w-4 h-4" />
-        <span class="text-xs font-medium">Done</span>
+        <span class="text-xs font-medium">{{ t('common.done') }}</span>
       </div>
     </div>
   </div>

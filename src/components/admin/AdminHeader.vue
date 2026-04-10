@@ -7,6 +7,8 @@ import { useToast } from '@/composables/useToast'
 import { Bell, LogOut, ChevronDown, Coffee, Menu, ArrowLeftRight } from 'lucide-vue-next'
 import { ROUTE_NAMES } from '@/lib/constants'
 import NotificationList from '@/components/notifications/NotificationList.vue'
+import { useI18n } from 'vue-i18n'
+import { setLocale, type Locale } from '@/i18n'
 
 interface Props {
   title?: string
@@ -18,21 +20,24 @@ const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const router = useRouter()
 const toast = useToast()
+const { t, locale } = useI18n()
 const showNotifications = ref(false)
 const showUserMenu = ref(false)
 
 // Admin can always switch to staff/receiver views (they have access to all routes)
-const switchViews = computed(() => {
-  const views = []
-  views.push({ label: 'Staff View', route: ROUTE_NAMES.STAFF_POS })
-  views.push({ label: 'Receiver View', route: ROUTE_NAMES.RECEIVER_QUEUE })
-  return views
-})
+const switchViews = computed(() => [
+  { label: t('adminHeader.staffView'), route: ROUTE_NAMES.STAFF_POS },
+  { label: t('adminHeader.receiverView'), route: ROUTE_NAMES.RECEIVER_QUEUE },
+])
+
+function toggleLocale() {
+  setLocale(locale.value === 'en' ? 'el' : 'en')
+}
 
 async function logout() {
   await authStore.logout()
   router.push({ name: ROUTE_NAMES.LOGIN })
-  toast.info('Logged out')
+  toast.info(t('notifications.loggedOut'))
 }
 </script>
 
@@ -50,10 +55,18 @@ async function logout() {
       <div class="lg:hidden w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
         <Coffee class="w-3.5 h-3.5 text-white" />
       </div>
-      <h1 class="font-semibold text-white text-sm lg:text-base">{{ title ?? 'Dashboard' }}</h1>
+      <h1 class="font-semibold text-white text-sm lg:text-base">{{ title ?? t('nav.dashboard') }}</h1>
     </div>
 
     <div class="flex items-center gap-2">
+      <!-- Language switcher -->
+      <button
+        class="px-2 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors tabular-nums"
+        @click="toggleLocale"
+      >
+        {{ locale === 'en' ? $t('lang.el') : $t('lang.en') }}
+      </button>
+
       <!-- Notification bell -->
       <div class="relative">
         <button
@@ -94,7 +107,7 @@ async function logout() {
           >
             <div class="px-3 py-2 border-b border-slate-700 mb-1">
               <p class="text-xs font-semibold text-white truncate">{{ authStore.profile?.full_name }}</p>
-              <p class="text-xs text-slate-500">Admin</p>
+              <p class="text-xs text-slate-500">{{ $t('adminHeader.admin') }}</p>
             </div>
             <button
               v-for="v in switchViews"
@@ -111,7 +124,7 @@ async function logout() {
               @click="logout"
             >
               <LogOut class="w-4 h-4" />
-              Sign Out
+              {{ $t('adminHeader.signOut') }}
             </button>
           </div>
         </Transition>

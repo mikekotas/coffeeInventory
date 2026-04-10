@@ -8,6 +8,7 @@ import {
 import type { DailyRevenue } from '@/types'
 import { CHART_COLORS } from '@/lib/constants'
 import { format } from 'date-fns'
+import { useI18n } from 'vue-i18n'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
@@ -15,12 +16,13 @@ interface Props {
   data: DailyRevenue[]
 }
 const props = defineProps<Props>()
+const { t } = useI18n()
 
 const chartData = computed(() => ({
   labels: props.data.map(d => format(new Date(d.sale_date), 'dd MMM')),
   datasets: [
     {
-      label: 'Revenue (€)',
+      label: t('sales.revenueLabel'),
       data: props.data.map(d => Number(d.total_revenue)),
       borderColor: CHART_COLORS.primary,
       backgroundColor: CHART_COLORS.primaryAlpha,
@@ -69,7 +71,7 @@ const options = {
   <div class="h-64">
     <Line v-if="data.length > 0" :data="chartData" :options="options" />
     <div v-else class="h-full flex items-center justify-center text-slate-500 text-sm">
-      No revenue data yet
+      {{ t('sales.noRevenueData') }}
     </div>
   </div>
 </template>

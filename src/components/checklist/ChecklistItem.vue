@@ -3,10 +3,13 @@ import type { InventoryItem } from '@/types'
 import { getStockStatus } from '@/types'
 import { useOrdersStore } from '@/stores/ordersStore'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from 'vue-i18n'
 import ThresholdBadge from '@/components/inventory/ThresholdBadge.vue'
 import StockBar from '@/components/inventory/StockBar.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import { Plus } from 'lucide-vue-next'
+
+const { t } = useI18n()
 
 interface Props {
   item: InventoryItem
@@ -21,11 +24,11 @@ async function addToOrder(item: InventoryItem) {
   adding.value = true
   try {
     await ordersStore.addItem(item.id)
-    toast.success('Added to order', `${item.name} added to draft order`)
+    toast.success(t('checklist.addToOrder'), t('checklist.addToOrderDesc', { name: item.name }))
   } catch (err: unknown) {
     const msg = (err as any)?.message ?? String(err)
     console.error('[ChecklistItem] Failed to add to order:', err)
-    toast.error('Failed to add to order', msg)
+    toast.error(t('checklist.addFailed'), msg)
   } finally {
     adding.value = false
   }
@@ -53,7 +56,7 @@ import { ref } from 'vue'
       <StockBar :item="item" />
       <p class="text-xs text-slate-500 mt-1">
         {{ item.stock_qty }} {{ item.unit }} •
-        Warning at {{ item.warning_threshold }} {{ item.unit }}
+        {{ t('checklist.warningAt', { threshold: item.warning_threshold, unit: item.unit }) }}
       </p>
     </div>
 
@@ -65,7 +68,7 @@ import { ref } from 'vue'
       @click="addToOrder(item)"
     >
       <Plus class="w-3.5 h-3.5" />
-      Order
+      {{ t('checklist.order') }}
     </AppButton>
   </div>
 </template>

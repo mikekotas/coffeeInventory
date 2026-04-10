@@ -5,6 +5,7 @@ import { useSalesStore } from '@/stores/salesStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
 import { useFormatters } from '@/composables/useFormatters'
+import { useI18n } from 'vue-i18n'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppStatCard from '@/components/ui/AppStatCard.vue'
@@ -16,6 +17,7 @@ const salesStore = useSalesStore()
 const authStore = useAuthStore()
 const toast = useToast()
 const { formatCurrency, formatDate, formatTime } = useFormatters()
+const { t } = useI18n()
 
 const starting = ref(false)
 const ending = ref(false)
@@ -39,9 +41,9 @@ async function handleStart() {
   try {
     await shiftsStore.startShift()
     shiftSales.value = []
-    toast.success('Shift started! Good luck 💪')
+    toast.success(t('shift.shiftStarted'))
   } catch {
-    toast.error('Failed to start shift')
+    toast.error(t('shift.startFailed'))
   } finally {
     starting.value = false
   }
@@ -51,9 +53,9 @@ async function handleEnd() {
   ending.value = true
   try {
     await shiftsStore.endShift()
-    toast.success('Shift ended. Great work!')
+    toast.success(t('shift.shiftEnded'))
   } catch {
-    toast.error('Failed to end shift')
+    toast.error(t('shift.endFailed'))
   } finally {
     ending.value = false
   }
@@ -75,31 +77,31 @@ async function handleEnd() {
         </div>
         <div>
           <p class="text-sm font-semibold text-white">
-            {{ shiftsStore.hasActiveShift ? 'Shift Active' : 'No Active Shift' }}
+            {{ shiftsStore.hasActiveShift ? t('shift.shiftActive') : t('shift.noActiveShift') }}
           </p>
           <p class="text-xs text-slate-500">
             {{ shiftsStore.hasActiveShift
-              ? `Started ${formatTime(shiftsStore.currentShift!.started_at)} · ${shiftsStore.shiftDuration}`
-              : 'Start a shift to begin logging sales'
+              ? t('shift.startedAt', { time: formatTime(shiftsStore.currentShift!.started_at), duration: shiftsStore.shiftDuration })
+              : t('shift.startToLog')
             }}
           </p>
         </div>
         <div v-if="shiftsStore.hasActiveShift" class="ml-auto">
           <span class="flex items-center gap-1.5 text-xs text-emerald-400">
             <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-            Live
+            {{ t('common.live') }}
           </span>
         </div>
       </div>
 
       <div v-if="!shiftsStore.hasActiveShift">
         <AppButton full-width :loading="starting" @click="handleStart">
-          <Play class="w-4 h-4" /> Start Shift
+          <Play class="w-4 h-4" /> {{ t('shift.startShift') }}
         </AppButton>
       </div>
       <div v-else>
         <AppButton full-width variant="danger" :loading="ending" @click="handleEnd">
-          <Square class="w-4 h-4" /> End Shift
+          <Square class="w-4 h-4" /> {{ t('shift.endShift') }}
         </AppButton>
       </div>
     </AppCard>
@@ -107,16 +109,16 @@ async function handleEnd() {
     <!-- Current shift stats -->
     <div v-if="shiftsStore.hasActiveShift" class="grid grid-cols-2 gap-3">
       <AppStatCard
-        title="Shift Revenue"
+        :title="t('shift.shiftRevenue')"
         :value="formatCurrency(shiftRevenue)"
         icon-bg="bg-brand-500/20"
       >
         <template #icon><TrendingUp class="w-5 h-5 text-brand-400" /></template>
       </AppStatCard>
       <AppStatCard
-        title="Sales"
+        :title="t('shift.sales')"
         :value="shiftSales.length"
-        subtitle="This shift"
+        :subtitle="t('shift.thisShift')"
         icon-bg="bg-blue-500/20"
       >
         <template #icon><ShoppingBag class="w-5 h-5 text-blue-400" /></template>
@@ -125,12 +127,12 @@ async function handleEnd() {
 
     <!-- Sales in current shift -->
     <div v-if="shiftsStore.hasActiveShift">
-      <h3 class="text-sm font-semibold text-slate-300 mb-2">Sales This Shift</h3>
+      <h3 class="text-sm font-semibold text-slate-300 mb-2">{{ t('shift.salesThisShift') }}</h3>
       <AppCard padding="none">
         <AppEmptyState
           v-if="shiftSales.length === 0"
-          title="No sales yet"
-          description="Make your first sale from the POS screen"
+          :title="t('shift.noSalesYet')"
+          :description="t('shift.firstSale')"
         />
         <div v-else class="divide-y divide-slate-700/50">
           <div

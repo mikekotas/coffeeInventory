@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 
 interface ConfirmOptions {
   title: string
@@ -12,15 +13,20 @@ const isOpen = ref(false)
 const options = ref<ConfirmOptions>({
   title: '',
   message: '',
-  confirmLabel: 'Confirm',
-  cancelLabel: 'Cancel',
+  confirmLabel: '',
+  cancelLabel: '',
   danger: false,
 })
 let resolveFn: ((value: boolean) => void) | null = null
 
 export function useConfirm() {
   function confirm(opts: ConfirmOptions): Promise<boolean> {
-    options.value = { confirmLabel: 'Confirm', cancelLabel: 'Cancel', danger: false, ...opts }
+    options.value = { 
+      confirmLabel: i18n.global.t('common.confirm'), 
+      cancelLabel: i18n.global.t('common.cancel'), 
+      danger: false, 
+      ...opts 
+    }
     isOpen.value = true
     return new Promise((resolve) => {
       resolveFn = resolve

@@ -4,15 +4,17 @@ import { useReceiverStore } from '@/stores/receiverStore'
 import { useReceiverShiftsStore } from '@/stores/receiverShiftsStore'
 import { useReceiverRealtime } from '@/composables/useRealtime'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from 'vue-i18n'
 import OrderCard from '@/components/receiver/OrderCard.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
 import { CheckCheck, Clock, Users } from 'lucide-vue-next'
-import type { Shift } from '@/types' // used for activeShifts ref typing
+import type { Shift } from '@/types'
 
 const receiverStore = useReceiverStore()
 const receiverShiftsStore = useReceiverShiftsStore()
 const toast = useToast()
+const { t } = useI18n()
 
 useReceiverRealtime()
 
@@ -39,9 +41,9 @@ async function loadActiveShifts() {
 async function handleComplete(saleId: string) {
   try {
     await receiverStore.markComplete(saleId)
-    toast.success('Order marked as done')
+    toast.success(t('queue.orderMarkedDone'))
   } catch {
-    toast.error('Failed to mark order complete')
+    toast.error(t('queue.markCompleteFailed'))
   }
 }
 </script>
@@ -53,7 +55,7 @@ async function handleComplete(saleId: string) {
     <div v-if="activeShifts.length > 0" class="flex items-center gap-2 flex-wrap">
       <div class="flex items-center gap-1.5 text-xs text-slate-500 mr-1">
         <Users class="w-3.5 h-3.5" />
-        <span>On shift:</span>
+        <span>{{ t('queue.onShift') }}</span>
       </div>
       <span
         v-for="shift in activeShifts"
@@ -61,7 +63,7 @@ async function handleComplete(saleId: string) {
         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium"
       >
         <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-        {{ shift.profile?.full_name ?? 'Staff' }}
+        {{ shift.profile?.full_name ?? t('queue.staff') }}
       </span>
     </div>
 
@@ -70,7 +72,7 @@ async function handleComplete(saleId: string) {
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold text-white flex items-center gap-2">
           <Clock class="w-4 h-4 text-amber-400" />
-          Pending
+          {{ t('queue.pending') }}
           <span
             v-if="receiverStore.pendingCount > 0"
             class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none"
@@ -84,8 +86,8 @@ async function handleComplete(saleId: string) {
 
       <div v-else-if="receiverStore.pendingQueue.length === 0">
         <AppEmptyState
-          title="All caught up!"
-          description="No pending orders. New orders will appear here instantly."
+          :title="t('queue.allCaughtUp')"
+          :description="t('queue.noPendingDesc')"
         >
           <template #icon>
             <CheckCheck class="w-8 h-8 text-emerald-500" />
@@ -113,7 +115,7 @@ async function handleComplete(saleId: string) {
     <section v-if="receiverStore.recentCompleted.length > 0">
       <h2 class="text-sm font-semibold text-slate-500 flex items-center gap-2 mb-3">
         <CheckCheck class="w-4 h-4" />
-        Recently Completed
+        {{ t('queue.recentlyCompleted') }}
       </h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <OrderCard

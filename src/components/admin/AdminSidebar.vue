@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { ROUTE_NAMES } from '@/lib/constants'
+import { useI18n } from 'vue-i18n'
 import {
   LayoutDashboard, Package, ShoppingBag, BookOpen, ClipboardList,
   Receipt, BarChart3, Users, Coffee
@@ -15,17 +17,18 @@ const emit = defineEmits<{ close: [] }>()
 
 const route = useRoute()
 const notificationsStore = useNotificationsStore()
+const { t } = useI18n()
 
-const navItems = [
-  { name: ROUTE_NAMES.ADMIN_DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
-  { name: ROUTE_NAMES.ADMIN_INVENTORY, label: 'Inventory', icon: Package },
-  { name: ROUTE_NAMES.ADMIN_PRODUCTS, label: 'Products', icon: ShoppingBag },
-  { name: ROUTE_NAMES.ADMIN_RECIPES, label: 'Recipes', icon: BookOpen },
-  { name: ROUTE_NAMES.ADMIN_ORDERS, label: 'Orders', icon: ClipboardList },
-  { name: ROUTE_NAMES.ADMIN_INVOICES, label: 'Invoices', icon: Receipt },
-  { name: ROUTE_NAMES.ADMIN_SALES, label: 'Sales', icon: BarChart3 },
-  { name: ROUTE_NAMES.ADMIN_STAFF, label: 'Staff', icon: Users },
-]
+const navItems = computed(() => [
+  { name: ROUTE_NAMES.ADMIN_DASHBOARD, label: t('nav.dashboard'), icon: LayoutDashboard },
+  { name: ROUTE_NAMES.ADMIN_INVENTORY, label: t('nav.inventory'), icon: Package },
+  { name: ROUTE_NAMES.ADMIN_PRODUCTS, label: t('nav.products'), icon: ShoppingBag },
+  { name: ROUTE_NAMES.ADMIN_RECIPES, label: t('nav.recipes'), icon: BookOpen },
+  { name: ROUTE_NAMES.ADMIN_ORDERS, label: t('nav.orders'), icon: ClipboardList },
+  { name: ROUTE_NAMES.ADMIN_INVOICES, label: t('nav.invoices'), icon: Receipt },
+  { name: ROUTE_NAMES.ADMIN_SALES, label: t('nav.sales'), icon: BarChart3 },
+  { name: ROUTE_NAMES.ADMIN_STAFF, label: t('nav.staff'), icon: Users },
+])
 
 const isActive = (routeName: string) => route.name === routeName
 </script>
@@ -55,7 +58,7 @@ const isActive = (routeName: string) => route.name === routeName
       </div>
       <div>
         <span class="font-bold text-white text-sm">Coffee Inv</span>
-        <p class="text-xs text-slate-500">Admin Panel</p>
+        <p class="text-xs text-slate-500">{{ $t('roles.adminPanel') }}</p>
       </div>
     </div>
 

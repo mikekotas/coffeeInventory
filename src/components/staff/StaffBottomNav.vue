@@ -1,18 +1,21 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useOrdersStore } from '@/stores/ordersStore'
 import { ROUTE_NAMES } from '@/lib/constants'
+import { useI18n } from 'vue-i18n'
 import { ShoppingCart, CheckSquare, Clock, History } from 'lucide-vue-next'
 
 const route = useRoute()
 const ordersStore = useOrdersStore()
+const { t } = useI18n()
 
-const navItems = [
-  { name: ROUTE_NAMES.STAFF_POS, label: 'POS', icon: ShoppingCart },
-  { name: ROUTE_NAMES.STAFF_CHECKLIST, label: 'Checklist', icon: CheckSquare },
-  { name: ROUTE_NAMES.STAFF_MY_SHIFT, label: 'My Shift', icon: Clock },
-  { name: ROUTE_NAMES.STAFF_HISTORY, label: 'History', icon: History },
-]
+const navItems = computed(() => [
+  { name: ROUTE_NAMES.STAFF_POS, label: t('nav.pos'), icon: ShoppingCart },
+  { name: ROUTE_NAMES.STAFF_CHECKLIST, label: t('nav.checklist'), icon: CheckSquare },
+  { name: ROUTE_NAMES.STAFF_MY_SHIFT, label: t('nav.myShift'), icon: Clock },
+  { name: ROUTE_NAMES.STAFF_HISTORY, label: t('nav.history'), icon: History },
+])
 
 const isActive = (routeName: string) => route.name === routeName
 </script>

@@ -6,6 +6,8 @@ import { useShiftsStore } from '@/stores/shiftsStore'
 import { useToast } from '@/composables/useToast'
 import { Coffee, LogOut, ChevronDown, ArrowLeftRight } from 'lucide-vue-next'
 import { ROUTE_NAMES } from '@/lib/constants'
+import { useI18n } from 'vue-i18n'
+import { setLocale } from '@/i18n'
 
 interface Props {
   title?: string
@@ -16,6 +18,7 @@ const authStore = useAuthStore()
 const shiftsStore = useShiftsStore()
 const router = useRouter()
 const toast = useToast()
+const { t, locale } = useI18n()
 const showMenu = ref(false)
 
 const hasMultipleViews = computed(() => authStore.isReceiver)
@@ -24,10 +27,14 @@ function switchView() {
   router.push({ name: ROUTE_NAMES.SELECT_ROLE })
 }
 
+function toggleLocale() {
+  setLocale(locale.value === 'en' ? 'el' : 'en')
+}
+
 async function logout() {
   await authStore.logout()
   router.push({ name: ROUTE_NAMES.LOGIN })
-  toast.info('Logged out')
+  toast.info(t('notifications.loggedOut'))
 }
 </script>
 
@@ -41,6 +48,14 @@ async function logout() {
     </div>
 
     <div class="flex items-center gap-2">
+      <!-- Language switcher -->
+      <button
+        class="px-2 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors tabular-nums"
+        @click="toggleLocale"
+      >
+        {{ locale === 'en' ? $t('lang.el') : $t('lang.en') }}
+      </button>
+
       <!-- Shift status pill -->
       <div
         :class="[
@@ -56,7 +71,7 @@ async function logout() {
             shiftsStore.hasActiveShift ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500',
           ]"
         />
-        {{ shiftsStore.hasActiveShift ? shiftsStore.shiftDuration ?? 'Active' : 'No shift' }}
+        {{ shiftsStore.hasActiveShift ? shiftsStore.shiftDuration ?? $t('common.live') : $t('staffHeader.noShift') }}
       </div>
 
       <!-- User menu -->
@@ -80,7 +95,7 @@ async function logout() {
           >
             <div class="px-3 py-2 border-b border-slate-700 mb-1">
               <p class="text-xs font-semibold text-white truncate">{{ authStore.profile?.full_name }}</p>
-              <p class="text-xs text-slate-500">Staff</p>
+              <p class="text-xs text-slate-500">{{ $t('staffHeader.staff') }}</p>
             </div>
             <button
               v-if="hasMultipleViews"
@@ -88,14 +103,14 @@ async function logout() {
               @click="switchView"
             >
               <ArrowLeftRight class="w-4 h-4" />
-              Switch View
+              {{ $t('staffHeader.switchView') }}
             </button>
             <button
               class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-slate-700 transition-colors"
               @click="logout"
             >
               <LogOut class="w-4 h-4" />
-              Sign Out
+              {{ $t('staffHeader.signOut') }}
             </button>
           </div>
         </Transition>

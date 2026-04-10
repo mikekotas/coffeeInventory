@@ -4,6 +4,7 @@ import { useInvoicesStore } from '@/stores/invoicesStore'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useFormatters } from '@/composables/useFormatters'
+import { useI18n } from 'vue-i18n'
 import type { InvoiceForm } from '@/types'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppButton from '@/components/ui/AppButton.vue'
@@ -18,6 +19,7 @@ const store = useInvoicesStore()
 const toast = useToast()
 const { confirm } = useConfirm()
 const { formatCurrency, formatDateShort } = useFormatters()
+const { t } = useI18n()
 
 const showModal = ref(false)
 const saving = ref(false)
@@ -28,10 +30,10 @@ async function handleSubmit(form: InvoiceForm, file: File | null) {
   saving.value = true
   try {
     await store.create(form, file ?? undefined)
-    toast.success('Invoice saved')
+    toast.success(t('invoices.invoiceSaved'))
     showModal.value = false
   } catch (err: unknown) {
-    toast.error('Failed to save invoice', err instanceof Error ? err.message : '')
+    toast.error(t('invoices.saveFailed'), err instanceof Error ? err.message : '')
   } finally {
     saving.value = false
   }
@@ -39,14 +41,14 @@ async function handleSubmit(form: InvoiceForm, file: File | null) {
 
 async function handleDelete(id: string) {
   const ok = await confirm({
-    title: 'Delete Invoice',
-    message: 'Permanently delete this invoice record?',
-    confirmLabel: 'Delete',
+    title: t('invoices.deleteInvoice'),
+    message: t('invoices.deleteInvoiceMsg'),
+    confirmLabel: t('invoices.deleteBtn'),
     danger: true,
   })
   if (!ok) return
   await store.remove(id)
-  toast.success('Invoice deleted')
+  toast.success(t('invoices.invoiceDeleted'))
 }
 </script>
 
@@ -54,28 +56,28 @@ async function handleDelete(id: string) {
   <div class="space-y-4">
     <!-- Stats -->
     <div class="grid grid-cols-2 gap-3">
-      <AppStatCard title="Total Spend" :value="formatCurrency(store.totalSpend)" subtitle="All time" icon-bg="bg-brand-500/20">
+      <AppStatCard :title="t('invoices.totalSpend')" :value="formatCurrency(store.totalSpend)" :subtitle="t('invoices.allTime')" icon-bg="bg-brand-500/20">
         <template #icon><Euro class="w-5 h-5 text-brand-400" /></template>
       </AppStatCard>
-      <AppStatCard title="This Month" :value="formatCurrency(store.monthlySpend)" icon-bg="bg-blue-500/20">
+      <AppStatCard :title="t('invoices.thisMonth')" :value="formatCurrency(store.monthlySpend)" icon-bg="bg-blue-500/20">
         <template #icon><Receipt class="w-5 h-5 text-blue-400" /></template>
       </AppStatCard>
     </div>
 
     <div class="flex justify-end">
-      <AppButton @click="showModal = true"><Plus class="w-4 h-4" /> Add Invoice</AppButton>
+      <AppButton @click="showModal = true"><Plus class="w-4 h-4" /> {{ t('invoices.addInvoice') }}</AppButton>
     </div>
 
     <AppCard padding="none">
       <AppSpinner v-if="store.loading" center />
       <AppEmptyState
         v-else-if="store.invoices.length === 0"
-        title="No invoices yet"
-        description="Record supplier invoices to track your spending"
+        :title="t('invoices.noInvoices')"
+        :description="t('invoices.noInvoicesDesc')"
       >
         <template #icon><Receipt class="w-8 h-8 text-slate-500" /></template>
         <template #action>
-          <AppButton size="sm" @click="showModal = true"><Plus class="w-4 h-4" /> Add Invoice</AppButton>
+          <AppButton size="sm" @click="showModal = true"><Plus class="w-4 h-4" /> {{ t('invoices.addInvoice') }}</AppButton>
         </template>
       </AppEmptyState>
 
@@ -113,7 +115,7 @@ async function handleDelete(id: string) {
       </div>
     </AppCard>
 
-    <AppModal :open="showModal" title="Add Invoice" @close="showModal = false">
+    <AppModal :open="showModal" :title="t('invoices.addInvoice')" @close="showModal = false">
       <InvoiceFormComp :loading="saving" @submit="handleSubmit" @cancel="showModal = false" />
     </AppModal>
   </div>

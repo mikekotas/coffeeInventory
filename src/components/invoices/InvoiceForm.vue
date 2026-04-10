@@ -2,8 +2,11 @@
 import { reactive, ref } from 'vue'
 import AppInput from '@/components/ui/AppInput.vue'
 import AppButton from '@/components/ui/AppButton.vue'
+import { useI18n } from 'vue-i18n'
 import type { InvoiceForm as IInvoiceForm } from '@/types'
 import { format } from 'date-fns'
+
+const { t } = useI18n()
 
 interface Props {
   loading?: boolean
@@ -30,8 +33,8 @@ function onFile(e: Event) {
   <form class="space-y-4" @submit.prevent="emit('submit', { ...form }, fileRef)">
     <AppInput
       v-model="form.description"
-      label="Description"
-      placeholder="e.g. Weekly coffee beans order"
+      :label="t('invoices.description')"
+      :placeholder="t('invoices.descriptionPlaceholder')"
       required
     />
 
@@ -39,7 +42,7 @@ function onFile(e: Event) {
       <AppInput
         v-model="form.amount"
         type="number"
-        label="Amount"
+        :label="t('invoices.amount')"
         prefix="€"
         placeholder="0.00"
         required
@@ -47,19 +50,19 @@ function onFile(e: Event) {
       <AppInput
         v-model="form.invoice_date"
         type="date"
-        label="Invoice Date"
+        :label="t('invoices.invoiceDate')"
         required
       />
     </div>
 
     <AppInput
       v-model="form.supplier"
-      label="Supplier"
-      placeholder="e.g. Coffee Supplies Co."
+      :label="t('invoices.supplier')"
+      :placeholder="t('invoices.supplierPlaceholder')"
     />
 
     <div>
-      <label class="text-sm font-medium text-slate-300 block mb-1">Attachment (optional)</label>
+      <label class="text-sm font-medium text-slate-300 block mb-1">{{ t('invoices.attachment') }}</label>
       <input
         type="file"
         accept=".pdf,.jpg,.jpeg,.png"
@@ -69,8 +72,8 @@ function onFile(e: Event) {
     </div>
 
     <div class="flex gap-2 pt-2">
-      <AppButton variant="ghost" type="button" full-width @click="emit('cancel')">Cancel</AppButton>
-      <AppButton type="submit" :loading="loading" full-width>Save Invoice</AppButton>
+      <AppButton variant="ghost" type="button" full-width @click="emit('cancel')">{{ t('common.cancel') }}</AppButton>
+      <AppButton type="submit" :loading="loading" full-width>{{ t('invoices.saveInvoice') }}</AppButton>
     </div>
   </form>
 </template>

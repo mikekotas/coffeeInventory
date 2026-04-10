@@ -2,7 +2,10 @@
 import { computed } from 'vue'
 import type { InventoryItem } from '@/types'
 import { getStockStatus } from '@/types'
+import { useI18n } from 'vue-i18n'
 import { STOCK_STATUS_CONFIG } from '@/lib/constants'
+
+const { t } = useI18n()
 
 interface Props {
   item: InventoryItem
@@ -24,7 +27,7 @@ const criticalPct = computed(() => (props.item.critical_threshold / maxQty.value
   <div class="w-full">
     <div v-if="showLabels" class="flex justify-between text-xs text-slate-500 mb-1">
       <span>{{ item.stock_qty }} {{ item.unit }}</span>
-      <span>Max ~{{ maxQty }} {{ item.unit }}</span>
+      <span>{{ t('common.max') }} ~{{ maxQty }} {{ item.unit }}</span>
     </div>
     <div class="relative h-2 bg-slate-700 rounded-full overflow-hidden">
       <!-- Fill bar -->

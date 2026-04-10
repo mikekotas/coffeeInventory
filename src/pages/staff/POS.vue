@@ -3,8 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { usePosStore } from '@/stores/posStore'
 import { useShiftsStore } from '@/stores/shiftsStore'
 import { useStaffRealtime } from '@/composables/useRealtime'
+import { useI18n } from 'vue-i18n'
 import type { ProductCategory } from '@/types'
 import { PRODUCT_CATEGORIES } from '@/lib/constants'
+import { useFormatters } from '@/composables/useFormatters'
 import ProductButton from '@/components/pos/ProductButton.vue'
 import SaleCart from '@/components/pos/SaleCart.vue'
 import ShiftBanner from '@/components/pos/ShiftBanner.vue'
@@ -14,6 +16,8 @@ import { ShoppingCart } from 'lucide-vue-next'
 
 const posStore = usePosStore()
 const shiftsStore = useShiftsStore()
+const { t } = useI18n()
+const { formatCurrency } = useFormatters()
 
 useStaffRealtime()
 
@@ -27,8 +31,8 @@ onMounted(async () => {
 const categoryTabs = computed(() => {
   const cats = [...new Set(posStore.products.map(p => p.category))]
   return [
-    { key: 'all', label: 'All' },
-    ...cats.map(c => ({ key: c, label: PRODUCT_CATEGORIES[c]?.label ?? c })),
+    { key: 'all', label: t('categories.product.all') },
+    ...cats.map(c => ({ key: c, label: t(`categories.product.${c}`) })),
   ]
 })
 
@@ -90,7 +94,7 @@ const cartQty = (productId: string) => {
         <ShoppingCart class="w-5 h-5" />
         <span class="font-semibold text-sm">{{ posStore.cartItemCount }}</span>
         <span class="text-sm">·</span>
-        <span class="font-bold">€{{ posStore.cartTotal.toFixed(2) }}</span>
+        <span class="font-bold">{{ formatCurrency(posStore.cartTotal) }}</span>
       </button>
 
       <!-- Cart Drawer -->
@@ -103,8 +107,8 @@ const cartQty = (productId: string) => {
 
     <div v-else class="mt-12 px-4">
       <AppEmptyState
-        title="Shift Required"
-        description="Please start a shift using the banner above to process sales."
+        :title="t('pos.shiftRequired')"
+        :description="t('pos.shiftRequiredDesc')"
       >
         <template #icon>
           <ShoppingCart class="w-8 h-8 text-slate-500" />

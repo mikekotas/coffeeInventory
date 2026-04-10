@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
 import { useFormatters } from '@/composables/useFormatters'
+import { useI18n } from 'vue-i18n'
 import type { Profile } from '@/types'
 import type { UserRole } from '@/types'
 import AppCard from '@/components/ui/AppCard.vue'
@@ -17,6 +18,7 @@ import { Users, UserPlus } from 'lucide-vue-next'
 const authStore = useAuthStore()
 const toast = useToast()
 const { formatDateShort } = useFormatters()
+const { t } = useI18n()
 
 const ALL_ROLES: UserRole[] = ['admin', 'staff', 'receiver']
 
@@ -38,7 +40,7 @@ onMounted(async () => {
 
 async function updateRoles(member: Profile, updatedRoles: UserRole[]) {
   if (updatedRoles.length === 0) {
-    toast.error('At least one role required')
+    toast.error(t('staff.atLeastOneRole'))
     return
   }
   savingRoles.value[member.id] = true
@@ -46,9 +48,9 @@ async function updateRoles(member: Profile, updatedRoles: UserRole[]) {
     await authStore.updateStaffRoles(member.id, updatedRoles)
     const idx = staff.value.findIndex(s => s.id === member.id)
     if (idx !== -1) staff.value[idx].roles = updatedRoles
-    toast.success(`${member.full_name}'s roles updated`)
+    toast.success(t('staff.rolesUpdated', { name: member.full_name }))
   } catch {
-    toast.error('Failed to update roles')
+    toast.error(t('staff.roleUpdateFailed'))
   } finally {
     delete savingRoles.value[member.id]
   }
@@ -58,7 +60,7 @@ async function handleInvite() {
   inviting.value = true
   try {
     await authStore.register(inviteEmail.value, invitePassword.value, inviteName.value, inviteRoles.value)
-    toast.success('Account created! User can now sign in.')
+    toast.success(t('staff.accountCreated'))
     staff.value = await authStore.fetchAllStaff()
     showInviteModal.value = false
     inviteEmail.value = ''
@@ -66,7 +68,7 @@ async function handleInvite() {
     inviteName.value = ''
     inviteRoles.value = ['staff']
   } catch (err: unknown) {
-    toast.error('Failed to create account', err instanceof Error ? err.message : '')
+    toast.error(t('staff.createFailed'), err instanceof Error ? err.message : '')
   } finally {
     inviting.value = false
   }
@@ -77,7 +79,7 @@ async function handleInvite() {
   <div class="space-y-4">
     <div class="flex justify-end">
       <AppButton @click="showInviteModal = true">
-        <UserPlus class="w-4 h-4" /> Add Staff Member
+        <UserPlus class="w-4 h-4" /> {{ t('staff.addStaff') }}
       </AppButton>
     </div>
 
@@ -85,8 +87,8 @@ async function handleInvite() {
       <AppSpinner v-if="loading" center />
       <AppEmptyState
         v-else-if="staff.length === 0"
-        title="No staff members"
-        description="Add staff members to your team"
+        :title="t('staff.noStaff')"
+        :description="t('staff.noStaffDesc')"
       >
         <template #icon><Users class="w-8 h-8 text-slate-500" /></template>
       </AppEmptyState>
@@ -104,7 +106,7 @@ async function handleInvite() {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <p class="text-sm font-medium text-white truncate">{{ member.full_name }}</p>
-              <span v-if="member.id === authStore.profile?.id" class="text-xs text-slate-500">(you)</span>
+              <span v-if="member.id === authStore.profile?.id" class="text-xs text-slate-500">{{ t('staff.you') }}</span>
               <AppBadge
                 v-for="r in member.roles"
                 :key="r"
@@ -114,7 +116,7 @@ async function handleInvite() {
                 {{ r }}
               </AppBadge>
             </div>
-            <p class="text-xs text-slate-500">Member since {{ formatDateShort(member.created_at) }}</p>
+            <p class="text-xs text-slate-500">{{ t('staff.memberSince', { date: formatDateShort(member.created_at) }) }}</p>
           </div>
           <!-- Role checkboxes — disabled for the currently logged-in admin -->
           <div
@@ -145,13 +147,13 @@ async function handleInvite() {
     </AppCard>
 
     <!-- Add Staff Modal -->
-    <AppModal :open="showInviteModal" title="Add Staff Member" @close="showInviteModal = false">
+    <AppModal :open="showInviteModal" :title="t('staff.addStaff')" @close="showInviteModal = false">
       <form class="space-y-4" @submit.prevent="handleInvite">
-        <AppInput v-model="inviteName" label="Full Name" placeholder="Jane Smith" required />
-        <AppInput v-model="inviteEmail" type="email" label="Email" placeholder="jane@shop.com" required />
-        <AppInput v-model="invitePassword" type="password" label="Password" placeholder="min. 6 characters" required />
+        <AppInput v-model="inviteName" :label="t('staff.fullName')" :placeholder="t('staff.fullNamePlaceholder')" required />
+        <AppInput v-model="inviteEmail" type="email" :label="t('common.name')" :placeholder="t('staff.emailPlaceholder')" required />
+        <AppInput v-model="invitePassword" type="password" :label="t('auth.password')" :placeholder="t('staff.passwordPlaceholder')" required />
         <div class="flex flex-col gap-2">
-          <label class="text-sm font-medium text-slate-300">Roles</label>
+          <label class="text-sm font-medium text-slate-300">{{ t('staff.roles') }}</label>
           <div class="flex gap-4">
             <label
               v-for="r in ALL_ROLES"
@@ -167,12 +169,12 @@ async function handleInvite() {
               <span class="text-sm text-slate-300 capitalize">{{ r }}</span>
             </label>
           </div>
-          <p class="text-xs text-slate-500">At least one role required</p>
+          <p class="text-xs text-slate-500">{{ t('staff.atLeastOneRole') }}</p>
         </div>
         <div class="flex gap-2 pt-1">
-          <AppButton variant="ghost" type="button" full-width @click="showInviteModal = false">Cancel</AppButton>
+          <AppButton variant="ghost" type="button" full-width @click="showInviteModal = false">{{ t('common.cancel') }}</AppButton>
           <AppButton type="submit" :loading="inviting" :disabled="inviting || inviteRoles.length === 0" full-width>
-            Create Account
+            {{ t('staff.createAccount') }}
           </AppButton>
         </div>
       </form>

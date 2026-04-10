@@ -3,12 +3,15 @@ import { ref, watch } from 'vue'
 import { useOrdersStore } from '@/stores/ordersStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
 import AppDrawer from '@/components/ui/AppDrawer.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
 import { Minus, Plus, Trash2, ClipboardList, Cpu, Bell } from 'lucide-vue-next'
+
+const { t } = useI18n()
 
 interface Props {
   open: boolean
@@ -45,9 +48,9 @@ async function notifyAdmin() {
       status: 'unread'
     })
     if (error) throw error
-    toast.success('Admin notified')
+    toast.success(t('orderDraft.adminNotified'))
   } catch (err: any) {
-    toast.error('Failed to notify admin', err.message)
+    toast.error(t('orderDraft.notifyFailed'), err.message)
   } finally {
     notifying.value = false
   }
@@ -55,7 +58,7 @@ async function notifyAdmin() {
 </script>
 
 <template>
-  <AppDrawer :open="open" title="Draft Order" side="bottom" @close="emit('close')">
+  <AppDrawer :open="open" :title="t('orderDraft.title')" side="bottom" @close="emit('close')">
     <div v-if="ordersStore.loading" class="p-8">
       <AppSpinner center />
     </div>
@@ -66,7 +69,7 @@ async function notifyAdmin() {
         <input
           v-model="orderName"
           type="text"
-          placeholder="Order name (optional, e.g. Week 15 Restock)"
+          :placeholder="t('orderDraft.orderNamePlaceholder')"
           maxlength="80"
           class="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
           @blur="handleNameBlur"
@@ -75,7 +78,7 @@ async function notifyAdmin() {
       </div>
 
       <div v-if="ordersStore.draftItems.length === 0" class="py-8">
-        <AppEmptyState title="No items in order" description="Add items from the checklist below">
+        <AppEmptyState :title="t('orderDraft.noItems')" :description="t('orderDraft.noItemsDesc')">
           <template #icon><ClipboardList class="w-8 h-8 text-slate-500" /></template>
         </AppEmptyState>
       </div>
@@ -93,7 +96,7 @@ async function notifyAdmin() {
                 v-if="oi.source === 'auto_threshold'"
                 class="inline-flex items-center gap-1 text-xs text-brand-400"
               >
-                <Cpu class="w-3 h-3" />Auto
+                <Cpu class="w-3 h-3" />{{ t('common.auto') }}
               </span>
             </div>
             <p class="text-xs text-slate-500">{{ oi.inventory?.unit }}</p>
@@ -129,10 +132,10 @@ async function notifyAdmin() {
     <template #footer>
       <div class="p-4">
         <p class="text-xs text-slate-500 mb-3 text-center">
-          {{ ordersStore.draftItemCount }} item(s) pending order · Admin will review and place the order
+          {{ t('orderDraft.pendingText', { count: ordersStore.draftItemCount }) }}
         </p>
         <div class="flex gap-2">
-          <AppButton variant="ghost" @click="emit('close')">Close</AppButton>
+          <AppButton variant="ghost" @click="emit('close')">{{ t('orderDraft.close') }}</AppButton>
           <AppButton
             v-if="ordersStore.draftItemCount > 0"
             full-width
@@ -140,7 +143,7 @@ async function notifyAdmin() {
             :loading="notifying"
             @click="notifyAdmin"
           >
-            <Bell class="w-4 h-4 mr-2" /> Notify Admin
+            <Bell class="w-4 h-4 mr-2" /> {{ t('orderDraft.notifyAdmin') }}
           </AppButton>
         </div>
       </div>

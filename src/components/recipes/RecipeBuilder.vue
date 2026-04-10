@@ -4,11 +4,16 @@ import { useProductsStore } from '@/stores/productsStore'
 import { useInventoryStore } from '@/stores/inventoryStore'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useI18n } from 'vue-i18n'
+import { useProductName } from '@/composables/useProductName'
 import type { Product, Recipe } from '@/types'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
 import { Plus, Trash2, BookOpen } from 'lucide-vue-next'
+
+const { t } = useI18n()
+const { getName } = useProductName()
 
 interface Props {
   product: Product
@@ -50,9 +55,9 @@ async function addIngredient() {
     recipes.value.push(newRecipe)
     selectedInventoryId.value = ''
     selectedQty.value = 1
-    toast.success('Ingredient added')
+    toast.success(t('recipes.ingredientAdded'))
   } catch {
-    toast.error('Failed to add ingredient')
+    toast.error(t('recipes.addFailed'))
   } finally {
     adding.value = false
   }
@@ -65,7 +70,7 @@ async function updateQty(recipe: Recipe, qty: number) {
     const idx = recipes.value.findIndex(r => r.id === recipe.id)
     if (idx !== -1) recipes.value[idx] = updated
   } catch {
-    toast.error('Failed to update')
+    toast.error(t('recipes.updateFailed'))
   } finally {
     updatingId.value = null
   }
@@ -73,18 +78,18 @@ async function updateQty(recipe: Recipe, qty: number) {
 
 async function removeIngredient(recipe: Recipe) {
   const ok = await confirm({
-    title: 'Remove Ingredient',
-    message: `Remove ${recipe.inventory?.name} from ${props.product.name}?`,
-    confirmLabel: 'Remove',
+    title: t('recipes.removeIngredient'),
+    message: t('recipes.removeIngredientMsg', { ingredient: recipe.inventory?.name, product: props.product.name }),
+    confirmLabel: t('recipes.removeBtn'),
     danger: true,
   })
   if (!ok) return
   try {
     await productsStore.removeRecipe(recipe.id)
     recipes.value = recipes.value.filter(r => r.id !== recipe.id)
-    toast.success('Ingredient removed')
+    toast.success(t('recipes.ingredientRemoved'))
   } catch {
-    toast.error('Failed to remove')
+    toast.error(t('recipes.removeFailed'))
   }
 }
 </script>
@@ -93,7 +98,7 @@ async function removeIngredient(recipe: Recipe) {
   <div class="space-y-4">
     <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
       <BookOpen class="w-4 h-4 text-brand-400" />
-      Recipe for {{ product.name }}
+      Recipe for {{ getName(product) }}
     </h3>
 
     <AppSpinner v-if="loading" center />
@@ -131,19 +136,19 @@ async function removeIngredient(recipe: Recipe) {
 
       <AppEmptyState
         v-else
-        title="No ingredients yet"
-        description="Add inventory items to define this product's recipe"
+        :title="t('recipes.noIngredients')"
+        :description="t('recipes.noIngredientsDesc')"
       />
 
       <!-- Add new ingredient -->
       <div class="border-t border-slate-700 pt-3 mt-3">
-        <p class="text-xs font-medium text-slate-400 mb-2">Add Ingredient</p>
+        <p class="text-xs font-medium text-slate-400 mb-2">{{ t('recipes.addIngredient') }}</p>
         <div class="flex gap-2">
           <select
             v-model="selectedInventoryId"
             class="flex-1 bg-slate-700/60 border border-slate-600 rounded-xl text-slate-100 text-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            <option value="" disabled>Select ingredient...</option>
+            <option value="" disabled>{{ t('recipes.selectIngredient') }}</option>
             <option
               v-for="inv in availableInventory()"
               :key="inv.id"
@@ -158,7 +163,7 @@ async function removeIngredient(recipe: Recipe) {
             type="number"
             min="0"
             step="0.1"
-            placeholder="Qty"
+            :placeholder="t('recipes.qty')"
             class="w-20 bg-slate-700/60 border border-slate-600 rounded-xl text-slate-100 text-sm py-2 px-3 text-center focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           <AppButton size="sm" :loading="adding" :disabled="!selectedInventoryId" @click="addIngredient">

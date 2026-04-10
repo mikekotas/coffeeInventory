@@ -1,7 +1,7 @@
 # Coffee Inventory Pro — AI Agent Context File
 
 > Paste this file at the start of any AI session to get full project context.
-> Last updated: 2026-04-10 (rev 4)
+> Last updated: 2026-04-10 (rev 5)
 
 ---
 
@@ -25,6 +25,11 @@ A **mobile-first PWA** for coffee shop POS and inventory management.
 - Staff can also manually add items to the draft order via the Checklist page
 - Admin reviews and finalizes draft orders
 
+**Full Localization (i18n):**
+- **Bilingual** - Supports English (en) and Greek (el) across all views.
+- **Dynamic Names** - Products and inventory items have Greek name overrides (`name_el`) stored in the DB.
+- **Locale-Aware Formatting** - Automated currency (EUR) and date formatting based on active locale.
+
 **Infrastructure:** 100% free-tier. Supabase (DB + Auth + Realtime + Edge Functions) + Vercel (hosting).
 
 ---
@@ -44,6 +49,7 @@ A **mobile-first PWA** for coffee shop POS and inventory management.
 | Charts | vue-chartjs + chart.js | ^5.3 / ^4.4 |
 | Icons | lucide-vue-next | ^0.378 |
 | Utilities | @vueuse/core, date-fns | ^10.11 / ^3.6 |
+| i18n | vue-i18n | ^9.13 |
 | Forms | vee-validate + zod | ^4.13 / ^3.23 |
 | PWA | vite-plugin-pwa + workbox | ^0.20 |
 | Hosting | Vercel | — |
@@ -85,6 +91,7 @@ Run in **Supabase SQL Editor** in this exact order:
 11. `supabase/migrations/011_receiver_view.sql` — Adds `receiver` role, `completed_at` on sales, receiver RLS policies
     > **Note:** Run `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'receiver';` FIRST (alone), then run the rest of the file
 12. `supabase/migrations/012_multi_role.sql` — Multi-role support: replaces `profiles.role` with `profiles.roles user_role[]`, rewrites `is_admin()` / `is_receiver()` / `handle_new_user()` trigger, adds GIN index and not-empty constraint
+13. `supabase/migrations/013_add_name_el.sql` — Adds `name_el` TEXT column to `products` and `inventory` tables to support Greek translations.
 
 ### Auth setup
 - Go to Supabase Dashboard → Authentication → Enable **Email** provider
@@ -131,15 +138,22 @@ coffeeInventory/
 │   │   ├── 009_add_payment_method.sql   ← payment_method on sales
 │   │   ├── 010_general_notifications.sql ← notifications improvements
 │   │   ├── 011_receiver_view.sql        ← receiver role + completed_at on sales + RLS
-│   │   └── 012_multi_role.sql           ← roles[] array column, GIN index, updated is_admin/is_receiver/trigger
+│   │   ├── 012_multi_role.sql           ← roles[] array column, GIN index, updated is_admin/is_receiver/trigger
+│   │   └── 013_add_name_el.sql          ← name_el optional columns for products/inventory
 │   └── functions/
 │       ├── process-sale/index.ts    ← Edge Function (unused — logic moved to posStore directly)
 │       └── finalize-order/index.ts  ← Edge Function (unused — logic moved to ordersStore directly)
 │
 └── src/
-    ├── main.ts                 ← createApp + Pinia + Router + mount
+    ├── main.ts                 ← createApp + Pinia + Router + i18n + mount
     ├── App.vue                 ← loading gate (auth.initialize) + RouterView + AppToast + AppConfirm
     ├── vite-env.d.ts           ← ImportMetaEnv interface (fixes TS env errors)
+    │
+    ├── i18n/
+    │   ├── index.ts            ← i18n creation + setLocale(locale) helper
+    │   └── locales/
+    │       ├── en.json         ← English translation keys
+    │       └── el.json         ← Greek translation keys
     │
     ├── types/
     │   └── index.ts            ← All TypeScript interfaces + getStockStatus() utility
@@ -168,7 +182,8 @@ coffeeInventory/
     ├── composables/
     │   ├── useToast.ts         ← singleton toast system (success/error/warning/info)
     │   ├── useConfirm.ts       ← singleton Promise-based confirm dialog
-    │   ├── useFormatters.ts    ← formatCurrency (el-GR EUR), formatDate, formatRelative
+    │   ├── useFormatters.ts    ← formatCurrency (locale-aware), formatDate, formatRelative
+    │   ├── useProductName.ts   ← getName(item) helper to return Greek or English name
     │   └── useRealtime.ts      ← useAdminRealtime() and useStaffRealtime() composables
     │
     ├── assets/
@@ -270,9 +285,9 @@ sale_type:             'takeaway' | 'table'
 ### Tables
 ```
 profiles          id(PK=auth.users.id), full_name, roles user_role[] (GIN-indexed, min 1), avatar_url, created_at, updated_at
-inventory         id, name, unit, stock_qty, warning_threshold, critical_threshold,
+inventory         id, name, name_el, unit, stock_qty, warning_threshold, critical_threshold,
                   category, is_active, created_at, updated_at
-products          id, name, base_price, category, is_active, created_at, updated_at
+products          id, name, name_el, base_price, category, is_active, created_at, updated_at
 recipes           id, product_id(FK→products), inventory_id(FK→inventory),
                   quantity_required, created_at   [UNIQUE: product_id + inventory_id]
 shifts            id, staff_id(FK→profiles), started_at, ended_at, notes,
@@ -478,10 +493,20 @@ const ok = await confirm.ask('Are you sure?', 'This cannot be undone')
 if (ok) { /* proceed */ }
 ```
 
+### Multilingual (i18n) Pattern
+```typescript
+// All static UI text uses $t('key') or t('key')
+<p>{{ t('auth.loginTitle') }}</p>
+
+// Dynamic item names use useProductName
+const { getName } = useProductName()
+<p>{{ getName(item) }}</p> // returns item.name_el if greek, else item.name
+```
+
 ### Formatters (`src/composables/useFormatters.ts`)
 ```typescript
 const { formatCurrency, formatDate, formatRelative } = useFormatters()
-formatCurrency(12.50)    // "12,50 €" (Greek locale)
+formatCurrency(12.50)    // "12,50 €" (el-GR) or "€12.50" (en-US)
 formatDate(isoString)    // "09/04/2026"
 formatRelative(isoString) // "2 hours ago"
 ```
@@ -635,6 +660,15 @@ Added capability to assign POS sales to a specific table.
 - View switcher: Admin header has "Staff View"/"Receiver View" links; Staff/Receiver layouts show "Switch View" button for multi-role users
 - Cross-device shift persistence: both shift stores now do localStorage → DB fallback in `initialize()`; `shiftsStore.initialize()` moved to `StaffLayout.vue`
 - `salesStore`: fixed broken `role` → `roles` in profiles Supabase select query (was causing admin dashboard KPI widgets to show zero)
+
+**A16 — Multilingual (i18n) Support (migration 013)**
+- **Full Greek/English support**: Integrated `vue-i18n`. All hardcoded UI strings moved to `en.json` and `el.json`.
+- **Dynamic Data Localization**: Added `name_el` to `products` and `inventory` tables.
+- **useProductName Composable**: Logic to toggle between `name` and `name_el` based on active locale.
+- **Locale-Aware Formatting**: Updated `formatCurrency` to switch between `el-GR` (EUR suffix) and `en-US` (fixed EUR prefix) based on active locale.
+- **Header Language Switcher**: Added in `AdminHeader.vue`, `StaffHeader.vue`, and `ReceiverLayout.vue` trigger.
+- **All Modules Localized**: Dashboard, Inventory, Products, Recipes, Orders, Invoices, Sales, POS, Checklist, Shifts, and History are all fully bilingual.
+- **Chart Localization**: `RevenueChart`, `TopProductsChart`, and `SalesShiftChart` use localized axes and labels.
 
 ---
 

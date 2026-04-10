@@ -27,6 +27,7 @@ export interface Profile {
 export interface InventoryItem {
   id: string
   name: string
+  name_el?: string | null
   unit: InventoryUnit
   stock_qty: number
   warning_threshold: number
@@ -40,6 +41,7 @@ export interface InventoryItem {
 export interface Product {
   id: string
   name: string
+  name_el?: string | null
   base_price: number
   category: ProductCategory
   is_active: boolean
@@ -156,6 +158,7 @@ export interface Invoice {
 
 export interface InventoryItemForm {
   name: string
+  name_el?: string | null
   unit: InventoryUnit
   stock_qty: number
   warning_threshold: number
@@ -166,6 +169,7 @@ export interface InventoryItemForm {
 
 export interface ProductForm {
   name: string
+  name_el?: string | null
   base_price: number
   category: ProductCategory
   is_active: boolean

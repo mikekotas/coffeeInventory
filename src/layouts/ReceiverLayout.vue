@@ -6,20 +6,27 @@ import { useReceiverStore } from '@/stores/receiverStore'
 import { useAuthStore } from '@/stores/authStore'
 import { ROUTE_NAMES } from '@/lib/constants'
 import { Monitor, ShoppingCart, Clock, LogOut, ArrowLeftRight } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
+import { setLocale } from '@/i18n'
 
 const route = useRoute()
 const router = useRouter()
 const receiverShiftsStore = useReceiverShiftsStore()
 const receiverStore = useReceiverStore()
 const authStore = useAuthStore()
+const { t, locale } = useI18n()
 
-const pageTitles: Record<string, string> = {
-  [ROUTE_NAMES.RECEIVER_QUEUE]: 'Order Queue',
-  [ROUTE_NAMES.RECEIVER_POS]: 'Quick Sale',
-  [ROUTE_NAMES.RECEIVER_MY_SHIFT]: 'My Shift',
+const pageTitles = computed<Record<string, string>>(() => ({
+  [ROUTE_NAMES.RECEIVER_QUEUE]: t('receiver.orderQueue'),
+  [ROUTE_NAMES.RECEIVER_POS]: t('receiver.quickSale'),
+  [ROUTE_NAMES.RECEIVER_MY_SHIFT]: t('receiver.myShift'),
+}))
+
+const title = computed(() => pageTitles.value[route.name as string] ?? t('receiver.title'))
+
+function toggleLocale() {
+  setLocale(locale.value === 'en' ? 'el' : 'en')
 }
-
-const title = computed(() => pageTitles[route.name as string] ?? 'Receiver')
 
 // Clock
 const now = ref(new Date())
@@ -36,11 +43,11 @@ const currentTime = computed(() =>
   now.value.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 )
 
-const navItems = [
-  { name: ROUTE_NAMES.RECEIVER_QUEUE, label: 'Queue', icon: Monitor },
-  { name: ROUTE_NAMES.RECEIVER_POS, label: 'Sale', icon: ShoppingCart },
-  { name: ROUTE_NAMES.RECEIVER_MY_SHIFT, label: 'Shift', icon: Clock },
-]
+const navItems = computed(() => [
+  { name: ROUTE_NAMES.RECEIVER_QUEUE, label: t('nav.queue'), icon: Monitor },
+  { name: ROUTE_NAMES.RECEIVER_POS, label: t('nav.sale'), icon: ShoppingCart },
+  { name: ROUTE_NAMES.RECEIVER_MY_SHIFT, label: t('nav.shift'), icon: Clock },
+])
 
 function switchView() {
   router.push({ name: ROUTE_NAMES.SELECT_ROLE })
@@ -61,12 +68,20 @@ async function logout() {
           <Monitor class="w-4 h-4 text-amber-400" />
         </div>
         <div>
-          <p class="text-xs text-slate-500 leading-none">Receiver</p>
+          <p class="text-xs text-slate-500 leading-none">{{ $t('receiver.title') }}</p>
           <p class="text-sm font-semibold text-white leading-tight">{{ title }}</p>
         </div>
       </div>
 
       <div class="flex items-center gap-3">
+        <!-- Language switcher -->
+        <button
+          class="px-2 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors tabular-nums"
+          @click="toggleLocale"
+        >
+          {{ locale === 'en' ? $t('lang.el') : $t('lang.en') }}
+        </button>
+
         <!-- Shift status chip -->
         <div
           :class="[
@@ -82,7 +97,7 @@ async function logout() {
               receiverShiftsStore.hasActiveShift ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500',
             ]"
           />
-          {{ receiverShiftsStore.hasActiveShift ? receiverShiftsStore.shiftDuration : 'No shift' }}
+          {{ receiverShiftsStore.hasActiveShift ? receiverShiftsStore.shiftDuration : $t('receiver.noShift') }}
         </div>
 
         <!-- Clock -->
@@ -92,7 +107,7 @@ async function logout() {
         <button
           v-if="authStore.isStaff"
           class="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
-          title="Switch view"
+          :title="$t('receiver.switchView')"
           @click="switchView"
         >
           <ArrowLeftRight class="w-4 h-4" />
@@ -101,7 +116,7 @@ async function logout() {
         <!-- Logout -->
         <button
           class="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
-          title="Logout"
+          :title="$t('receiver.signOut')"
           @click="logout"
         >
           <LogOut class="w-4 h-4" />

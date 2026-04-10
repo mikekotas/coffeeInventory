@@ -2,9 +2,12 @@
 import { onMounted } from 'vue'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useFormatters } from '@/composables/useFormatters'
+import { useI18n } from 'vue-i18n'
 import { AlertTriangle, AlertCircle, X, CheckCheck } from 'lucide-vue-next'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -19,7 +22,7 @@ onMounted(() => store.fetchAll())
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
       <div class="flex items-center gap-2">
-        <h3 class="font-semibold text-white text-sm">Notifications</h3>
+        <h3 class="font-semibold text-white text-sm">{{ t('notifications.title') }}</h3>
         <span
           v-if="store.unreadCount > 0"
           class="bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center"
@@ -49,8 +52,8 @@ onMounted(() => store.fetchAll())
       <AppSpinner v-if="store.loading" center />
       <AppEmptyState
         v-else-if="store.notifications.length === 0"
-        title="No notifications"
-        description="You're all clear!"
+        :title="t('notifications.noNotifications')"
+        :description="t('notifications.allClear')"
       />
       <div v-else>
         <div

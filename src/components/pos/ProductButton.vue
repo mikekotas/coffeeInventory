@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Product } from '@/types'
 import { useFormatters } from '@/composables/useFormatters'
+import { useProductName } from '@/composables/useProductName'
 
 interface Props {
   product: Product
@@ -10,6 +11,7 @@ withDefaults(defineProps<Props>(), { cartQty: 0 })
 const emit = defineEmits<{ tap: [product: Product] }>()
 
 const { formatCurrency } = useFormatters()
+const { getName } = useProductName()
 
 const categoryEmojis: Record<string, string> = {
   coffee: '☕',
@@ -43,7 +45,7 @@ const categoryEmojis: Record<string, string> = {
     <span class="text-2xl leading-none">{{ categoryEmojis[product.category] ?? '☕' }}</span>
 
     <!-- Name -->
-    <span class="text-xs font-semibold text-white leading-tight line-clamp-2">{{ product.name }}</span>
+    <span class="text-xs font-semibold text-white leading-tight line-clamp-2">{{ getName(product) }}</span>
 
     <!-- Price -->
     <span class="text-xs text-slate-400 font-medium">{{ formatCurrency(product.base_price) }}</span>

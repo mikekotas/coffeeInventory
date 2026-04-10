@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePosStore } from '@/stores/posStore'
 import { useReceiverShiftsStore } from '@/stores/receiverShiftsStore'
+import { useI18n } from 'vue-i18n'
 import type { ProductCategory } from '@/types'
 import { PRODUCT_CATEGORIES } from '@/lib/constants'
 import ProductButton from '@/components/pos/ProductButton.vue'
@@ -16,6 +17,7 @@ import { useToast } from '@/composables/useToast'
 const posStore = usePosStore()
 const receiverShiftsStore = useReceiverShiftsStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const showCart = ref(false)
 const selectedCategory = ref<ProductCategory | 'all'>('all')
@@ -29,7 +31,7 @@ onMounted(async () => {
 const categoryTabs = computed(() => {
   const cats = [...new Set(posStore.products.map(p => p.category))]
   return [
-    { key: 'all', label: 'All' },
+    { key: 'all', label: t('categories.product.all') },
     ...cats.map(c => ({ key: c, label: PRODUCT_CATEGORIES[c]?.label ?? c })),
   ]
 })
@@ -53,9 +55,9 @@ async function startShift() {
   starting.value = true
   try {
     await receiverShiftsStore.startShift()
-    toast.success('Shift started!')
+    toast.success(t('shift.shiftStartedShort'))
   } catch {
-    toast.error('Failed to start shift')
+    toast.error(t('shift.startFailed'))
   } finally {
     starting.value = false
   }
@@ -84,8 +86,8 @@ async function startShift() {
           :class="['text-xs font-medium', receiverShiftsStore.hasActiveShift ? 'text-emerald-300' : 'text-slate-400']"
         >
           {{ receiverShiftsStore.hasActiveShift
-            ? `Shift active · ${receiverShiftsStore.shiftDuration}`
-            : 'No active shift — start one to place sales'
+            ? t('shift.shiftActivePOS', { duration: receiverShiftsStore.shiftDuration })
+            : t('shift.noActivePOS')
           }}
         </span>
       </div>
@@ -96,7 +98,7 @@ async function startShift() {
         :loading="starting"
         @click="startShift"
       >
-        <Play class="w-3 h-3" /> Start
+        <Play class="w-3 h-3" /> {{ t('shift.startShift') }}
       </AppButton>
     </div>
 
@@ -157,8 +159,8 @@ async function startShift() {
 
     <div v-else class="mt-12 px-4">
       <AppEmptyState
-        title="Shift Required"
-        description="Start a shift using the banner above to process sales from this terminal."
+        :title="t('pos.shiftRequired')"
+        :description="t('pos.shiftRequiredDescReceiver')"
       >
         <template #icon>
           <ShoppingCart class="w-8 h-8 text-slate-500" />

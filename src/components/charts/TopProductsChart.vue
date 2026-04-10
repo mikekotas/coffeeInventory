@@ -4,6 +4,7 @@ import { Doughnut } from 'vue-chartjs'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import type { TopProduct } from '@/types'
 import { CHART_COLORS } from '@/lib/constants'
+import { useI18n } from 'vue-i18n'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -11,6 +12,7 @@ interface Props {
   data: TopProduct[]
 }
 const props = defineProps<Props>()
+const { t } = useI18n()
 
 const chartData = computed(() => ({
   labels: props.data.map(d => d.product_name),
@@ -51,7 +53,7 @@ const options = {
   <div class="h-56">
     <Doughnut v-if="data.length > 0" :data="chartData" :options="options" />
     <div v-else class="h-full flex items-center justify-center text-slate-500 text-sm">
-      No product data yet
+      {{ t('sales.noProductData') }}
     </div>
   </div>
 </template>

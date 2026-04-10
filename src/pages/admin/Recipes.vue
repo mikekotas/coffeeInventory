@@ -1,7 +1,9 @@
-<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useProductsStore } from '@/stores/productsStore'
 import { useInventoryStore } from '@/stores/inventoryStore'
+import { useI18n } from 'vue-i18n'
+import { useProductName } from '@/composables/useProductName'
+import { useFormatters } from '@/composables/useFormatters'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
 import AppBadge from '@/components/ui/AppBadge.vue'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -10,6 +12,11 @@ import RecipeBuilder from '@/components/recipes/RecipeBuilder.vue'
 import { PRODUCT_CATEGORIES } from '@/lib/constants'
 import type { Product } from '@/types'
 import { BookOpen } from 'lucide-vue-next'
+
+const { getName } = useProductName()
+const { formatCurrency } = useFormatters()
+
+const { t } = useI18n()
 
 const productsStore = useProductsStore()
 const inventoryStore = useInventoryStore()
@@ -32,9 +39,7 @@ function openRecipe(product: Product) {
 
 <template>
   <div class="space-y-4">
-    <p class="text-sm text-slate-400">
-      Define what ingredients each product consumes when sold. Stock will be automatically deducted on every sale.
-    </p>
+    <p class="text-sm text-slate-400">{{ t('recipes.pageDesc') }}</p>
 
     <AppSpinner v-if="productsStore.loading" center />
 
@@ -47,24 +52,24 @@ function openRecipe(product: Product) {
       >
         <div class="flex items-start justify-between gap-2">
           <div class="flex-1 min-w-0">
-            <p class="font-medium text-white text-sm truncate">{{ product.name }}</p>
-            <p class="text-xs text-slate-500 mt-0.5">€{{ product.base_price }}</p>
+            <p class="font-medium text-white text-sm truncate">{{ getName(product) }}</p>
+            <p class="text-xs text-slate-500 mt-0.5">{{ formatCurrency(product.base_price) }}</p>
           </div>
           <AppBadge :variant="categoryVariants[product.category] ?? 'gray'" dot size="sm">
-            {{ PRODUCT_CATEGORIES[product.category]?.label }}
+            {{ t(`categories.product.${product.category}`) }}
           </AppBadge>
         </div>
         <div class="mt-3 flex items-center gap-1.5 text-xs text-brand-400">
           <BookOpen class="w-3.5 h-3.5" />
-          Edit recipe
+          {{ t('recipes.editRecipe') }}
         </div>
       </div>
     </div>
 
-    <AppModal :open="showModal" size="lg" title="Recipe Builder" @close="showModal = false">
+    <AppModal :open="showModal" size="lg" :title="t('recipes.recipeBuilder')" @close="showModal = false">
       <RecipeBuilder v-if="selected && showModal" :product="selected" />
       <template #footer>
-        <AppButton variant="ghost" @click="showModal = false">Done</AppButton>
+        <AppButton variant="ghost" @click="showModal = false">{{ t('common.done') }}</AppButton>
       </template>
     </AppModal>
   </div>

@@ -3,11 +3,16 @@ import { ref, computed } from 'vue'
 import { usePosStore } from '@/stores/posStore'
 import { useToast } from '@/composables/useToast'
 import { useFormatters } from '@/composables/useFormatters'
+import { useI18n } from 'vue-i18n'
+import { useProductName } from '@/composables/useProductName'
 import AppDrawer from '@/components/ui/AppDrawer.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppInput from '@/components/ui/AppInput.vue'
 import { Minus, Plus, Trash2, ShoppingCart } from 'lucide-vue-next'
+
+const { t } = useI18n()
+const { getName } = useProductName()
 
 interface Props {
   open: boolean
@@ -32,11 +37,11 @@ async function handleConfirm() {
   confirming.value = true
   try {
     const saleId = await posStore.confirmSale(props.shiftIdOverride)
-    toast.success('Sale recorded!', `Total: ${formatCurrency(posStore.cartTotal)}`)
+    toast.success(t('pos.saleRecorded'), `Total: ${formatCurrency(posStore.cartTotal)}`)
     emit('sold', saleId)
     emit('close')
   } catch (err: unknown) {
-    toast.error('Sale failed', err instanceof Error ? err.message : 'Please try again')
+    toast.error(t('pos.saleFailed'), err instanceof Error ? err.message : t('pos.saleTryAgain'))
   } finally {
     confirming.value = false
   }
@@ -44,10 +49,10 @@ async function handleConfirm() {
 </script>
 
 <template>
-  <AppDrawer :open="open" title="Current Order" side="right" @close="emit('close')">
+  <AppDrawer :open="open" :title="t('pos.currentOrder')" side="right" @close="emit('close')">
     <!-- Cart items -->
     <div class="p-4 space-y-2">
-      <AppEmptyState v-if="posStore.isEmpty" title="Cart is empty" description="Tap products to add them">
+      <AppEmptyState v-if="posStore.isEmpty" :title="t('pos.cartEmpty')" :description="t('pos.cartEmptyDesc')">
         <template #icon>
           <ShoppingCart class="w-8 h-8 text-slate-500" />
         </template>
@@ -59,8 +64,8 @@ async function handleConfirm() {
         class="flex items-center gap-3 bg-slate-700/40 rounded-xl p-3"
       >
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-white truncate">{{ item.product.name }}</p>
-          <p class="text-xs text-slate-400">{{ formatCurrency(item.product.base_price) }} each</p>
+          <p class="text-sm font-medium text-white truncate">{{ getName(item.product) }}</p>
+          <p class="text-xs text-slate-400">{{ formatCurrency(item.product.base_price) }} {{ t('pos.each') }}</p>
         </div>
 
         <!-- Qty controls -->
@@ -97,7 +102,7 @@ async function handleConfirm() {
       <div class="p-4 space-y-3">
         <!-- Total -->
         <div class="flex justify-between items-center py-3 border-t border-slate-700">
-          <span class="text-sm text-slate-400">Total</span>
+          <span class="text-sm text-slate-400">{{ t('pos.total') }}</span>
           <span class="text-xl font-bold text-white">{{ formatCurrency(posStore.cartTotal) }}</span>
         </div>
 
@@ -109,21 +114,21 @@ async function handleConfirm() {
               :class="posStore.saleType === 'takeaway' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'"
               @click="posStore.saleType = 'takeaway'"
             >
-              Takeaway
+              {{ t('pos.takeaway') }}
             </button>
             <button
               class="flex-1 py-1.5 text-sm font-medium rounded-md transition-colors"
               :class="posStore.saleType === 'table' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'"
               @click="posStore.saleType = 'table'"
             >
-              Table
+              {{ t('pos.table') }}
             </button>
           </div>
           
           <AppInput
             v-if="posStore.saleType === 'table'"
             v-model="posStore.tableIdentifier"
-            placeholder="Table number or name..."
+            :placeholder="t('pos.tableNumber')"
           />
         </div>
 
@@ -135,27 +140,27 @@ async function handleConfirm() {
               :class="posStore.paymentMethod === 'cash' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'"
               @click="posStore.paymentMethod = 'cash'"
             >
-              Cash
+              {{ t('pos.cash') }}
             </button>
             <button
               class="flex-1 py-1.5 text-sm font-medium rounded-md transition-colors"
               :class="posStore.paymentMethod === 'card' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'"
               @click="posStore.paymentMethod = 'card'"
             >
-              Card
+              {{ t('pos.card') }}
             </button>
           </div>
         </div>
 
         <div class="flex gap-2">
-          <AppButton variant="ghost" @click="posStore.clearCart(); emit('close')">Clear</AppButton>
+          <AppButton variant="ghost" @click="posStore.clearCart(); emit('close')">{{ t('pos.clear') }}</AppButton>
           <AppButton
             full-width
             :loading="confirming"
             :disabled="!canConfirm"
             @click="handleConfirm"
           >
-            Confirm Sale
+            {{ t('pos.confirmSale') }}
           </AppButton>
         </div>
       </div>

@@ -90,10 +90,11 @@ export const PRODUCT_CATEGORIES: Record<
 
 // ============================================================
 // STOCK STATUS COLORS
+// label is now provided by i18n keys: status.ok / status.low / status.critical / status.out
 // ============================================================
 export const STOCK_STATUS_CONFIG = {
   ok: {
-    label: 'OK',
+    labelKey: 'status.ok',
     bgClass: 'bg-emerald-100',
     textClass: 'text-emerald-800',
     barClass: 'bg-emerald-500',
@@ -101,7 +102,7 @@ export const STOCK_STATUS_CONFIG = {
     borderClass: 'border-emerald-200',
   },
   warning: {
-    label: 'Low',
+    labelKey: 'status.low',
     bgClass: 'bg-amber-100',
     textClass: 'text-amber-800',
     barClass: 'bg-amber-500',
@@ -109,7 +110,7 @@ export const STOCK_STATUS_CONFIG = {
     borderClass: 'border-amber-200',
   },
   critical: {
-    label: 'Critical',
+    labelKey: 'status.critical',
     bgClass: 'bg-red-100',
     textClass: 'text-red-800',
     barClass: 'bg-red-500',
@@ -117,7 +118,7 @@ export const STOCK_STATUS_CONFIG = {
     borderClass: 'border-red-200',
   },
   out: {
-    label: 'Out',
+    labelKey: 'status.out',
     bgClass: 'bg-slate-100',
     textClass: 'text-slate-800',
     barClass: 'bg-slate-400',
@@ -181,6 +182,7 @@ export const LS_KEYS = {
   currentShiftId: 'coffee_inv_shift_id',
   receiverShiftId: 'coffee_inv_receiver_shift_id',
   theme: 'coffee_inv_theme',
+  locale: 'coffee_inv_locale',
 }
 
 // ============================================================

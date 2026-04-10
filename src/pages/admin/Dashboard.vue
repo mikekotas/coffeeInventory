@@ -7,6 +7,7 @@ import { useOrdersStore } from '@/stores/ordersStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAdminRealtime } from '@/composables/useRealtime'
 import { useFormatters } from '@/composables/useFormatters'
+import { useI18n } from 'vue-i18n'
 import AppStatCard from '@/components/ui/AppStatCard.vue'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
@@ -25,6 +26,7 @@ const notificationsStore = useNotificationsStore()
 const ordersStore = useOrdersStore()
 const authStore = useAuthStore()
 const { formatCurrency, formatRelative } = useFormatters()
+const { t } = useI18n()
 
 useAdminRealtime()
 
@@ -53,43 +55,43 @@ const weekRevenue = computed(() => {
   <div class="space-y-6">
     <!-- Greeting -->
     <div>
-      <h2 class="text-xl font-bold text-white">Good day, {{ firstName }} 👋</h2>
-      <p class="text-sm text-slate-500">Here's what's happening at your shop.</p>
+      <h2 class="text-xl font-bold text-white">{{ $t('dashboard.greeting', { name: firstName }) }}</h2>
+      <p class="text-sm text-slate-500">{{ $t('dashboard.subtitle') }}</p>
     </div>
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <AppStatCard
-        title="Today's Revenue"
+        :title="$t('dashboard.todayRevenue')"
         :value="formatCurrency(salesStore.todayRevenue)"
-        subtitle="Sales today"
+        :subtitle="$t('dashboard.salesToday')"
         icon-bg="bg-brand-500/20"
       >
         <template #icon><Euro class="w-5 h-5 text-brand-400" /></template>
       </AppStatCard>
 
       <AppStatCard
-        title="This Week"
+        :title="$t('dashboard.thisWeek')"
         :value="formatCurrency(weekRevenue)"
-        subtitle="Last 7 days"
+        :subtitle="$t('dashboard.last7Days')"
         icon-bg="bg-emerald-500/20"
       >
         <template #icon><TrendingUp class="w-5 h-5 text-emerald-400" /></template>
       </AppStatCard>
 
       <AppStatCard
-        title="Low Stock Items"
+        :title="$t('dashboard.lowStockItems')"
         :value="inventoryStore.lowStockItems.length"
-        :subtitle="`${inventoryStore.criticalItems.length} critical`"
+        :subtitle="$t('dashboard.criticalCount', { count: inventoryStore.criticalItems.length })"
         icon-bg="bg-amber-500/20"
       >
         <template #icon><Package class="w-5 h-5 text-amber-400" /></template>
       </AppStatCard>
 
       <AppStatCard
-        title="Pending Orders"
+        :title="$t('dashboard.pendingOrders')"
         :value="ordersStore.draftItemCount"
-        subtitle="Items to order"
+        :subtitle="$t('dashboard.itemsToOrder')"
         icon-bg="bg-blue-500/20"
       >
         <template #icon><ClipboardList class="w-5 h-5 text-blue-400" /></template>
@@ -100,7 +102,7 @@ const weekRevenue = computed(() => {
       <!-- Revenue Chart -->
       <AppCard class="lg:col-span-2" padding="md">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-white text-sm">Revenue (30 days)</h3>
+          <h3 class="font-semibold text-white text-sm">{{ $t('dashboard.revenue30d') }}</h3>
         </div>
         <AppSpinner v-if="salesStore.loading" center />
         <RevenueChart v-else :data="salesStore.dailyRevenue" />
@@ -108,7 +110,7 @@ const weekRevenue = computed(() => {
 
       <!-- Top Products -->
       <AppCard padding="md">
-        <h3 class="font-semibold text-white text-sm mb-4">Top Products</h3>
+        <h3 class="font-semibold text-white text-sm mb-4">{{ $t('dashboard.topProducts') }}</h3>
         <AppSpinner v-if="salesStore.loading" center />
         <TopProductsChart v-else :data="salesStore.topProducts" />
       </AppCard>
@@ -118,14 +120,14 @@ const weekRevenue = computed(() => {
       <!-- Critical Stock -->
       <AppCard padding="none">
         <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-700">
-          <h3 class="font-semibold text-white text-sm">Stock Alerts</h3>
+          <h3 class="font-semibold text-white text-sm">{{ $t('dashboard.stockAlerts') }}</h3>
           <AppBadge v-if="inventoryStore.criticalItems.length > 0" variant="red" dot>
-            {{ inventoryStore.criticalItems.length }} critical
+            {{ $t('dashboard.criticalCount', { count: inventoryStore.criticalItems.length }) }}
           </AppBadge>
         </div>
         <div v-if="inventoryStore.loading" class="p-6"><AppSpinner center /></div>
         <div v-else-if="inventoryStore.lowStockItems.length === 0" class="px-4 py-8 text-center text-sm text-slate-500">
-          All stock levels OK ✓
+          {{ $t('dashboard.allStockOk') }}
         </div>
         <div v-else class="divide-y divide-slate-700/50">
           <div
@@ -138,7 +140,9 @@ const weekRevenue = computed(() => {
               <ThresholdBadge :item="item" :show-qty="false" />
             </div>
             <StockBar :item="item" />
-            <p class="text-xs text-slate-500 mt-1">{{ item.stock_qty }} / {{ item.warning_threshold }} {{ item.unit }} warning</p>
+            <p class="text-xs text-slate-500 mt-1">
+              {{ $t('dashboard.warningNote', { qty: item.stock_qty, threshold: item.warning_threshold, unit: item.unit }) }}
+            </p>
           </div>
         </div>
       </AppCard>
@@ -146,18 +150,18 @@ const weekRevenue = computed(() => {
       <!-- Recent Notifications -->
       <AppCard padding="none">
         <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-700">
-          <h3 class="font-semibold text-white text-sm">Recent Alerts</h3>
+          <h3 class="font-semibold text-white text-sm">{{ $t('dashboard.recentAlerts') }}</h3>
           <button
             v-if="notificationsStore.unreadCount > 0"
             class="text-xs text-brand-400 hover:text-brand-300"
             @click="notificationsStore.markAllRead()"
           >
-            Mark all read
+            {{ $t('dashboard.markAllRead') }}
           </button>
         </div>
         <div v-if="notificationsStore.loading" class="p-6"><AppSpinner center /></div>
         <div v-else-if="notificationsStore.notifications.length === 0" class="px-4 py-8 text-center text-sm text-slate-500">
-          No notifications yet
+          {{ $t('dashboard.noNotifications') }}
         </div>
         <div v-else class="divide-y divide-slate-700/50 max-h-80 overflow-y-auto">
           <div

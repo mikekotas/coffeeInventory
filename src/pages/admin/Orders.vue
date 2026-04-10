@@ -4,6 +4,8 @@ import { useOrdersStore } from '@/stores/ordersStore'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useFormatters } from '@/composables/useFormatters'
+import { useI18n } from 'vue-i18n'
+import { useProductName } from '@/composables/useProductName'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppSpinner from '@/components/ui/AppSpinner.vue'
@@ -16,6 +18,8 @@ const store = useOrdersStore()
 const toast = useToast()
 const { confirm } = useConfirm()
 const { formatDate } = useFormatters()
+const { t } = useI18n()
+const { getName } = useProductName()
 
 const activeTab = ref<'draft' | 'finalized' | 'delivered'>('draft')
 const finalizing = ref(false)
@@ -23,9 +27,9 @@ const delivering = ref<string | null>(null)
 const receivingItem = ref<string | null>(null)
 
 const tabs = computed(() => [
-  { key: 'draft', label: 'Pending Orders', count: draftOrders.value.length || undefined },
-  { key: 'finalized', label: 'To Be Delivered', count: finalizedOrders.value.length || undefined },
-  { key: 'delivered', label: 'Delivered' },
+  { key: 'draft', label: t('orders.pendingOrders'), count: draftOrders.value.length || undefined },
+  { key: 'finalized', label: t('orders.toBeDelivered'), count: finalizedOrders.value.length || undefined },
+  { key: 'delivered', label: t('orders.delivered') },
 ])
 
 onMounted(() => {
@@ -52,18 +56,18 @@ function allReceived(order: { order_items?: { received: boolean }[] }) {
 
 async function handleFinalize(orderId: string) {
   const ok = await confirm({
-    title: 'Place Order',
-    message: 'Mark this order as placed with the supplier? It will move to "To Be Delivered".',
-    confirmLabel: 'Place Order',
+    title: t('orders.placeOrder'),
+    message: t('orders.placeOrderMsg'),
+    confirmLabel: t('orders.placeOrderBtn'),
   })
   if (!ok) return
   finalizing.value = true
   try {
     await store.finalizeOrder(orderId)
-    toast.success('Order placed!', 'Now tracking delivery in "To Be Delivered"')
+    toast.success(t('orders.orderPlaced'), t('orders.orderPlacedDesc'))
     activeTab.value = 'finalized'
   } catch {
-    toast.error('Failed to place order')
+    toast.error(t('orders.placeOrderFailed'))
   } finally {
     finalizing.value = false
   }
@@ -73,9 +77,9 @@ async function handleMarkReceived(orderItemId: string, inventoryId: string, qty:
   receivingItem.value = orderItemId
   try {
     await store.markItemReceived(orderItemId, inventoryId, qty)
-    toast.success('Item received', 'Inventory updated')
+    toast.success(t('orders.itemReceived'), t('orders.inventoryUpdated'))
   } catch {
-    toast.error('Failed to mark item received')
+    toast.error(t('orders.itemReceivedFailed'))
   } finally {
     receivingItem.value = null
   }
@@ -83,18 +87,18 @@ async function handleMarkReceived(orderItemId: string, inventoryId: string, qty:
 
 async function handleMarkDelivered(orderId: string) {
   const ok = await confirm({
-    title: 'Complete Delivery',
-    message: 'Mark this order as fully delivered? This cannot be undone.',
-    confirmLabel: 'Mark Delivered',
+    title: t('orders.completeDelivery'),
+    message: t('orders.completeDeliveryMsg'),
+    confirmLabel: t('orders.markDelivered'),
   })
   if (!ok) return
   delivering.value = orderId
   try {
     await store.markOrderDelivered(orderId)
-    toast.success('Order delivered!', 'All items received')
+    toast.success(t('orders.orderDelivered'), t('orders.allItemsReceived'))
     activeTab.value = 'delivered'
   } catch {
-    toast.error('Failed to mark order delivered')
+    toast.error(t('orders.deliveryFailed'))
   } finally {
     delivering.value = null
   }
@@ -110,8 +114,8 @@ async function handleMarkDelivered(orderId: string) {
       <AppSpinner v-if="store.loading" center />
       <AppEmptyState
         v-else-if="draftOrders.length === 0"
-        title="No pending orders"
-        description="Orders are created automatically when stock falls below warning levels, or manually by staff from the checklist."
+        :title="t('orders.noPendingOrders')"
+        :description="t('orders.noPendingDesc')"
       >
         <template #icon><ClipboardList class="w-8 h-8 text-slate-500" /></template>
       </AppEmptyState>
@@ -125,10 +129,10 @@ async function handleMarkDelivered(orderId: string) {
           <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-700">
             <div>
               <p class="text-sm font-semibold text-white">{{ orderDisplayName(order) }}</p>
-              <p class="text-xs text-slate-500">{{ formatDate(order.created_at) }} · {{ order.order_items?.length ?? 0 }} items</p>
+              <p class="text-xs text-slate-500">{{ formatDate(order.created_at) }} · {{ t('orders.itemCount', { count: order.order_items?.length ?? 0 }) }}</p>
             </div>
             <AppButton size="sm" :loading="finalizing" @click="handleFinalize(order.id)">
-              <CheckCircle class="w-4 h-4" /> Place Order
+              <CheckCircle class="w-4 h-4" /> {{ t('orders.placeOrder') }}
             </AppButton>
           </div>
 
@@ -140,9 +144,9 @@ async function handleMarkDelivered(orderId: string) {
             >
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5">
-                  <p class="text-sm text-white truncate">{{ oi.inventory?.name }}</p>
+                  <p class="text-sm text-white truncate">{{ oi.inventory ? getName(oi.inventory) : '' }}</p>
                   <span v-if="oi.source === 'auto_threshold'" class="inline-flex items-center gap-1 text-xs text-brand-400">
-                    <Cpu class="w-3 h-3" />Auto
+                    <Cpu class="w-3 h-3" />{{ t('common.auto') }}
                   </span>
                 </div>
                 <p class="text-xs text-slate-500">{{ oi.notes }}</p>
@@ -177,8 +181,8 @@ async function handleMarkDelivered(orderId: string) {
       <AppSpinner v-if="store.loading" center />
       <AppEmptyState
         v-else-if="finalizedOrders.length === 0"
-        title="No orders awaiting delivery"
-        description="When you place an order it will appear here for delivery tracking."
+        :title="t('orders.noAwaitingDelivery')"
+        :description="t('orders.noAwaitingDesc')"
       >
         <template #icon><Package class="w-8 h-8 text-slate-500" /></template>
       </AppEmptyState>
@@ -193,15 +197,15 @@ async function handleMarkDelivered(orderId: string) {
           <div class="flex items-start justify-between px-4 pt-4 pb-3 border-b border-slate-700">
             <div>
               <p class="text-sm font-semibold text-white">{{ orderDisplayName(order) }}</p>
-              <p class="text-xs text-slate-500">Ordered {{ formatDate(order.finalized_at ?? order.created_at) }}</p>
+              <p class="text-xs text-slate-500">{{ t('orders.ordered', { date: formatDate(order.finalized_at ?? order.created_at) }) }}</p>
               <p class="text-xs text-slate-400 mt-0.5">
-                {{ receivedCount(order) }} / {{ order.order_items?.length ?? 0 }} items received
+                {{ t('orders.itemsReceived', { received: receivedCount(order), total: order.order_items?.length ?? 0 }) }}
               </p>
             </div>
             <div class="flex items-center gap-2">
               <!-- Progress ring placeholder — simple badge -->
-              <AppBadge v-if="allReceived(order)" variant="green" dot>All received</AppBadge>
-              <AppBadge v-else variant="amber" dot>Pending</AppBadge>
+              <AppBadge v-if="allReceived(order)" variant="green" dot>{{ t('orders.allReceived') }}</AppBadge>
+              <AppBadge v-else variant="amber" dot>{{ t('orders.pending') }}</AppBadge>
             </div>
           </div>
 
@@ -230,15 +234,15 @@ async function handleMarkDelivered(orderId: string) {
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5">
                   <p class="text-sm text-white truncate" :class="oi.received ? 'line-through text-slate-400' : ''">
-                    {{ oi.inventory?.name }}
+                    {{ oi.inventory ? getName(oi.inventory) : '' }}
                   </p>
                   <span v-if="oi.source === 'auto_threshold'" class="inline-flex items-center gap-1 text-xs text-brand-400">
-                    <Cpu class="w-3 h-3" />Auto
+                    <Cpu class="w-3 h-3" />{{ t('common.auto') }}
                   </span>
                 </div>
                 <p class="text-xs text-slate-500">
                   {{ oi.quantity_requested }} {{ oi.inventory?.unit }}
-                  <span v-if="oi.received && oi.received_at" class="text-emerald-500"> · Received {{ formatDate(oi.received_at) }}</span>
+                  <span v-if="oi.received && oi.received_at" class="text-emerald-500"> · {{ t('orders.placed', { date: formatDate(oi.received_at) }) }}</span>
                 </p>
               </div>
             </div>
@@ -254,7 +258,7 @@ async function handleMarkDelivered(orderId: string) {
               @click="handleMarkDelivered(order.id)"
             >
               <PackageCheck class="w-4 h-4" />
-              {{ allReceived(order) ? 'Mark as Delivered' : `Waiting for ${(order.order_items?.length ?? 0) - receivedCount(order)} more item(s)` }}
+              {{ allReceived(order) ? t('orders.markAsDelivered') : t('orders.waitingFor', { count: (order.order_items?.length ?? 0) - receivedCount(order) }) }}
             </AppButton>
           </div>
         </AppCard>
@@ -266,8 +270,8 @@ async function handleMarkDelivered(orderId: string) {
       <AppSpinner v-if="store.loading" center />
       <AppEmptyState
         v-else-if="deliveredOrders.length === 0"
-        title="No delivered orders yet"
-        description="Completed orders will appear here after all items are received."
+        :title="t('orders.noDeliveredYet')"
+        :description="t('orders.noDeliveredDesc')"
       >
         <template #icon><PackageCheck class="w-8 h-8 text-slate-500" /></template>
       </AppEmptyState>
@@ -281,10 +285,10 @@ async function handleMarkDelivered(orderId: string) {
           <div class="px-4 pt-4 pb-3 border-b border-slate-700 flex items-start justify-between">
             <div>
               <p class="text-sm font-semibold text-white">{{ orderDisplayName(order) }}</p>
-              <p class="text-xs text-slate-500">Ordered {{ formatDate(order.created_at) }}</p>
-              <p v-if="order.finalized_at" class="text-xs text-slate-500">Placed {{ formatDate(order.finalized_at) }}</p>
+              <p class="text-xs text-slate-500">{{ t('orders.ordered', { date: formatDate(order.created_at) }) }}</p>
+              <p v-if="order.finalized_at" class="text-xs text-slate-500">{{ t('orders.placed', { date: formatDate(order.finalized_at) }) }}</p>
             </div>
-            <AppBadge variant="green" dot>Delivered</AppBadge>
+            <AppBadge variant="green" dot>{{ t('orders.delivered') }}</AppBadge>
           </div>
           <div class="divide-y divide-slate-700/50">
             <div
@@ -294,7 +298,7 @@ async function handleMarkDelivered(orderId: string) {
             >
               <CheckCircle class="w-4 h-4 text-emerald-500 shrink-0" />
               <div class="flex-1 min-w-0">
-                <p class="text-sm text-slate-300 truncate">{{ oi.inventory?.name }}</p>
+                <p class="text-sm text-slate-300 truncate">{{ oi.inventory ? getName(oi.inventory) : '' }}</p>
                 <p class="text-xs text-slate-500">{{ oi.quantity_requested }} {{ oi.inventory?.unit }}</p>
               </div>
             </div>

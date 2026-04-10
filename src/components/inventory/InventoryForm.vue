@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, watch, computed } from 'vue'
 import AppInput from '@/components/ui/AppInput.vue'
 import AppSelect from '@/components/ui/AppSelect.vue'
 import AppButton from '@/components/ui/AppButton.vue'
+import { useI18n } from 'vue-i18n'
 import type { InventoryItem, InventoryItemForm } from '@/types'
 import { INVENTORY_UNITS, INVENTORY_CATEGORIES } from '@/lib/constants'
+
+const { t } = useI18n()
 
 interface Props {
   item?: InventoryItem | null
@@ -13,11 +16,12 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { item: null, loading: false })
 const emit = defineEmits<{ submit: [form: InventoryItemForm]; cancel: [] }>()
 
-const unitOptions = Object.entries(INVENTORY_UNITS).map(([value, label]) => ({ value, label }))
-const categoryOptions = Object.entries(INVENTORY_CATEGORIES).map(([value, { label }]) => ({ value, label }))
+const unitOptions = computed(() => Object.keys(INVENTORY_UNITS).map((value) => ({ value, label: t(`units.inventory.${value}`) })))
+const categoryOptions = computed(() => Object.keys(INVENTORY_CATEGORIES).map((value) => ({ value, label: t(`categories.inventory.${value}`) })))
 
 const form = reactive<InventoryItemForm>({
   name: '',
+  name_el: '',
   unit: 'units',
   stock_qty: 0,
   warning_threshold: 10,
@@ -29,6 +33,7 @@ const form = reactive<InventoryItemForm>({
 watch(() => props.item, (item) => {
   if (item) {
     form.name = item.name
+    form.name_el = item.name_el ?? ''
     form.unit = item.unit
     form.stock_qty = item.stock_qty
     form.warning_threshold = item.warning_threshold
@@ -45,19 +50,20 @@ function onSubmit() {
 
 <template>
   <form class="space-y-4" @submit.prevent="onSubmit">
-    <AppInput v-model="form.name" label="Item Name" placeholder="e.g. Whole Milk" required />
+    <AppInput v-model="form.name" :label="t('inventory.itemName')" :placeholder="t('inventory.itemNamePlaceholder')" required />
+    <AppInput :model-value="form.name_el ?? ''" @update:model-value="form.name_el = $event" :label="t('inventory.greekName')" :placeholder="t('inventory.greekNamePlaceholder')" />
 
     <div class="grid grid-cols-2 gap-3">
       <AppSelect
         v-model="form.unit"
         :options="unitOptions"
-        label="Unit"
+        :label="t('inventory.unit')"
         required
       />
       <AppSelect
         v-model="form.category"
         :options="categoryOptions"
-        label="Category"
+        :label="t('inventory.category')"
         required
       />
     </div>
@@ -65,7 +71,7 @@ function onSubmit() {
     <AppInput
       v-model="form.stock_qty"
       type="number"
-      label="Current Stock"
+      :label="t('inventory.currentStock')"
       placeholder="0"
       required
     />
@@ -74,15 +80,15 @@ function onSubmit() {
       <AppInput
         v-model="form.warning_threshold"
         type="number"
-        label="Warning Threshold"
-        :suffix="form.unit"
+        :label="t('inventory.warningThreshold')"
+        :suffix="t(`units.inventory.${form.unit}`)"
         required
       />
       <AppInput
         v-model="form.critical_threshold"
         type="number"
-        label="Critical Threshold"
-        :suffix="form.unit"
+        :label="t('inventory.criticalThreshold')"
+        :suffix="t(`units.inventory.${form.unit}`)"
         required
       />
     </div>
@@ -94,13 +100,13 @@ function onSubmit() {
         type="checkbox"
         class="w-4 h-4 rounded bg-slate-700 border-slate-600 text-brand-600 focus:ring-brand-500"
       />
-      <label for="is_active" class="text-sm text-slate-300">Active (visible in checklists)</label>
+      <label for="is_active" class="text-sm text-slate-300">{{ t('inventory.activeVisibility') }}</label>
     </div>
 
     <div class="flex gap-2 pt-2">
-      <AppButton variant="ghost" type="button" full-width @click="emit('cancel')">Cancel</AppButton>
+      <AppButton variant="ghost" type="button" full-width @click="emit('cancel')">{{ t('common.cancel') }}</AppButton>
       <AppButton type="submit" :loading="loading" full-width>
-        {{ item ? 'Update Item' : 'Add Item' }}
+        {{ item ? t('inventory.updateItem') : t('inventory.addItem') }}
       </AppButton>
     </div>
   </form>
